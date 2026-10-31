@@ -1,0 +1,20 @@
+services:
+  helperhub:
+    build: .
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      PORT: "8080"
+      HELPERHUB_IMAGE_REMOVE_BG_API_KEY: ${HELPERHUB_IMAGE_REMOVE_BG_API_KEY:-}
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:size=1073741824,mode=1777
+    mem_limit: 2g
+    cpus: 2
+    pids_limit: 256
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
