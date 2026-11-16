@@ -131,4 +131,4 @@ Validação em 31/10/2026: suíte Gradle aprovada; seleção por arraste e tecla
 
 ### Publicar na Vercel
 
-O Dockerfile está preparado para o Container Runtime da Vercel (Beta), com suporte à variável `PORT`. Veja [DEPLOY-VERCEL.md](DEPLOY-VERCEL.md) para importar o repositório e configurar a chave opcional do remove.bg. **O deploy direto continua sujeito ao limite de 4,5 MB por requisição/resposta da plataforma; arquivos maiores exigem adaptação do fluxo com armazenamento externo.**
+Use o preset **Container** para rodar o Dockerfile na Vercel. O [guia de deploy](DEPLOY-VERCEL.md) mostra como configurar o projeto e testar um Preview. Para o primeiro teste, use arquivos pequenos. A Vercel limita o corpo de uploads a 4,5 MB.

@@ -10,11 +10,22 @@ O projeto usa o **Container Runtime (Beta)** da Vercel, com o `Dockerfile` da ra
 4. Opcionalmente, cadastre `HELPERHUB_IMAGE_REMOVE_BG_API_KEY` nas variáveis de ambiente para habilitar remove.bg. Não coloque a chave no repositório.
 5. Faça o deploy. Confira `/actuator/health` e teste um arquivo pequeno pela interface.
 
+## Testar um Preview
+
+Em um projeto existente com o preset **Other**, selecione **Container** em **Settings → Build and Deployment**. Pela CLI autenticada, substitua `NOME_DO_PROJETO` e `ESCOPO` pelos valores da sua conta:
+
+```sh
+vercel project update NOME_DO_PROJETO --scope ESCOPO --framework container --yes
+vercel deploy --project NOME_DO_PROJETO --scope ESCOPO --logs
+```
+
+Abra a URL de Preview e entre na Vercel se o deploy estiver protegido. Confirme que a interface carrega e que o campo `status` em `/actuator/health` retorna `UP`. Na ferramenta **Converter imagem**, envie `src/test/resources/media/sample.webp`, selecione PNG e confira se o arquivo baixado abre.
+
 A imagem escuta na porta 80 por padrão, esperada pela Vercel. Se definir `PORT` nas configurações do projeto, a aplicação e o healthcheck usam esse valor. Localmente, `docker compose up -d --build` continua disponível em `http://localhost:8080`; o Compose define `PORT=8080`. Sem Docker, o padrão também continua sendo 8080.
 
 ## Restrição importante: arquivos grandes
 
-**Esta preparação permite publicar o contêiner, mas não resolve o limite de transporte da Vercel.** A documentação informa um limite de 4,5 MB por corpo de requisição/resposta de Functions, também aplicável ao Container Runtime. O formulário multipart inclui metadados além do arquivo. Mesmo uma entrada pequena pode produzir uma saída maior que esse limite, por exemplo ao converter MP3 para WAV.
+O Container Runtime está sujeito aos limites de Functions. Para os primeiros testes, use arquivos bem abaixo de 4,5 MB, pois o corpo da requisição multipart inclui metadados além do arquivo. O limite também se aplica a respostas não transmitidas em streaming. Mesmo uma entrada pequena pode gerar uma saída maior, por exemplo ao converter MP3 para WAV.
 
 Os limites locais do HelperHub (uploads de 50 MiB e downloads de vídeo de até 250 MiB) permanecem iguais. Portanto, não considere que todas essas operações funcionarão na Vercel apenas por o deploy estar saudável. Alterar o limite do Spring não aumenta o limite da plataforma. O tempo máximo de cada requisição também depende do plano/configuração da Function; o timeout de 900 segundos do yt-dlp não garante que a plataforma espere esse período.
 
@@ -27,5 +38,3 @@ Os limites de concorrência e de requisições do HelperHub são por instância,
 - Container Runtime, detecção do Dockerfile e porta: https://vercel.com/docs/functions/runtimes/container
 - Limites das Functions: https://vercel.com/docs/functions/limitations
 - Upload direto de arquivos grandes: https://vercel.com/kb/guide/how-to-bypass-vercel-body-size-limit-serverless-functions
-
-A configuração deve ser validada na conta de destino após a importação; nenhum deploy remoto foi realizado nesta preparação.
