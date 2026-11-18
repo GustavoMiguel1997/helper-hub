@@ -31,7 +31,7 @@ class WebPageControllerTest {
         .andExpect(content().contentTypeCompatibleWith("text/html"))
         .andExpect(content().string(containsString("<link rel=\"canonical\" href=\"https://helperhub.gmslab.cloud/\">")))
         .andExpect(content().string(containsString("<meta name=\"robots\" content=\"index, follow\">")))
-        .andExpect(content().string(containsString("data-initial-tool=\"resize\"")))
+        .andExpect(content().string(containsString("data-initial-tool=\"explore\"")))
         .andExpect(content().string(containsString("href=\"/comprimir-imagem\"")))
         .andExpect(content().string(containsString("href=\"/cortar-audio\"")))
         .andExpect(content().string(containsString("href=\"/extrair-audio-video\"")));

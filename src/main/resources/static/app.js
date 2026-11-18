@@ -52,6 +52,17 @@ for (const entry of pageCatalogEntries) {
 function applyPageMetadata(page) {
   if (!page) return;
   document.title = page.title;
+  for(const [selector, value] of [
+    ['meta[name="description"]', page.description],
+    ['meta[name="robots"]', page.robots],
+    ['meta[property="og:title"]', page.title],
+    ['meta[property="og:description"]', page.description],
+    ['meta[property="og:url"]', page.canonicalUrl],
+    ['meta[name="twitter:title"]', page.title],
+    ['meta[name="twitter:description"]', page.description]
+  ]) document.querySelector(selector)?.setAttribute('content', value);
+  const structuredData = document.querySelector('script[type="application/ld+json"]');
+  if(structuredData) structuredData.textContent = page.jsonLd;
   const canonical = document.querySelector('link[rel="canonical"]');
   if (canonical) canonical.href = page.canonicalUrl;
   if ($('intro-eyebrow-text')) $('intro-eyebrow-text').textContent = page.eyebrow;
@@ -65,14 +76,38 @@ function setToolNavDisabled(disabled) {
     el.classList.toggle('is-disabled', disabled);
   });
 }
-function navigateToTool(key, pushHistory = true) {
-  if (busy || !tools[key]) return;
-  const page = pageByToolKey[key];
-  if (pushHistory && page && window.location.pathname !== page.path) {
-    window.history.pushState({ tool: key }, '', page.path);
+function navigateToPage(page, pushHistory = true) {
+  if(busy || !page) return;
+  if(pushHistory && window.location.pathname !== page.path) {
+    window.history.pushState({tool:page.toolKey}, '', page.path);
   }
   applyPageMetadata(page);
-  selectTool(key);
+  document.body.dataset.initialTool = page.toolKey;
+  $('explore-panel').hidden = !page.homePage;
+  $('tool-editor').hidden = page.homePage;
+  document.querySelectorAll('[data-home]').forEach(link => {
+    if(page.homePage) link.setAttribute('aria-current','page');
+    else link.removeAttribute('aria-current');
+  });
+  if(page.homePage) {
+    audioEditor?.destroy(); audioEditor = null;
+    imageEditor?.destroy(); imageEditor = null;
+    if(sourceUrl) URL.revokeObjectURL(sourceUrl);
+    sourceUrl = null;
+    file = null;
+    current = 'explore';
+    clearResult(); status();
+    document.querySelectorAll('[data-tool]').forEach(link => {
+      link.setAttribute('aria-pressed','false');
+      link.removeAttribute('aria-current');
+    });
+    document.querySelectorAll('.tool-category').forEach(group => {
+      group.open = !window.matchMedia('(max-width:640px)').matches && group.dataset.category === 'IMAGEM';
+    });
+  } else selectTool(page.toolKey);
+}
+function navigateToTool(key, pushHistory = true) {
+  navigateToPage(pageByToolKey[key], pushHistory);
 }
 function selectTool(key) {
   if (busy) return;
@@ -88,8 +123,6 @@ function selectTool(key) {
   $('source-preview').replaceChildren(); $('source-preview').hidden = true;
   const tool = tools[key];
   document.querySelectorAll('.tool-category').forEach(group => { group.open = group.dataset.category === tool.category; });
-  $('tool-menu-label').textContent = 'Ferramentas · ' + tool.action;
-  if(window.matchMedia('(max-width:640px)').matches) $('tool-menu').open = false;
   const onHome = window.location.pathname === '/';
   document.querySelectorAll('[data-tool]').forEach(item => {
     const active = item.dataset.tool === key;
@@ -302,14 +335,13 @@ $('seo-guide')?.addEventListener('click', event => {
   const targetPage = pageByPath[anchor.getAttribute('href')];
   if (!targetPage) return;
   event.preventDefault();
-  navigateToTool(targetPage.toolKey, true);
-  $('tool-title').scrollIntoView({behavior:'smooth', block:'center'});
+  navigateToPage(targetPage, true);
+  document.querySelector('.workspace')?.scrollIntoView({behavior:'smooth', block:'start'});
 });
 window.addEventListener('popstate', () => {
   const page = pageByPath[window.location.pathname] || pageByPath['/'];
   if (!page) return;
-  applyPageMetadata(page);
-  selectTool(page.toolKey);
+  navigateToPage(page, false);
 });
 $('batch-mode').addEventListener('change', updateBatchMode);
 $('file').addEventListener('change', event => setUpload(event.target.files));
@@ -368,9 +400,11 @@ $('tool-form').addEventListener('submit', async event => {
   } catch(error) { status(error instanceof TypeError ? 'Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.' : error?.message || 'Não foi possível concluir a operação. Tente novamente.', true); }
   finally { busy = false; $('controls').disabled = false; setToolNavDisabled(false); $('submit-label').textContent = batch ? 'Processar e gerar ZIP' : tool.action; }
 });
-const initialTool = document.body.dataset.initialTool || 'resize';
-selectTool(tools[initialTool] ? initialTool : 'resize');
-
-const mobileMenu = window.matchMedia('(max-width:640px)');
-$('tool-menu').open = !mobileMenu.matches;
-mobileMenu.addEventListener('change', event => { $('tool-menu').open = !event.matches; });
+document.querySelectorAll('[data-home], .brand[href="/"]').forEach(link => {
+  link.addEventListener('click', event => {
+    if(event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+    event.preventDefault();
+    navigateToPage(pageByPath['/']);
+  });
+});
+navigateToPage(pageByPath[window.location.pathname] || pageByPath['/'], false);

@@ -119,7 +119,7 @@ Referências: [yt-dlp](https://github.com/yt-dlp/yt-dlp), [TwelveMonkeys ImageIO
 
 ## Fluxo entre ferramentas
 
-O menu agrupa as ferramentas em acordeões de Imagem, Áudio e Vídeo. A categoria da ferramenta selecionada abre automaticamente. No celular, o seletor de ferramentas se recolhe após a escolha.
+O menu agrupa as ferramentas em acordeões de Imagem, Áudio e Vídeo. A categoria da ferramenta selecionada abre automaticamente. No celular, as categorias e seus totais de ferramentas ficam visíveis, com expansão individual. A página inicial oferece Explore com dois atalhos por categoria.
 
 **Recortar imagem** oferece seleção por arraste, campos em pixels e proporções livre, 1:1, 16:9, 9:16 e 4:3. Ajustar os campos manualmente volta à proporção livre. **Girar e espelhar** mostra uma prévia dos giros de 90°, 180° e 270° e do espelhamento horizontal/vertical. As fotos com orientação EXIF são normalizadas antes do processamento para acompanhar a prévia do navegador.
 
@@ -154,3 +154,9 @@ O símbolo usa um h creme sobre verde-floresta com detalhe em lima. O logo de 51
 A marca foi criada com o ImageGen integrado. Prompt final usado:
 
 > Use case: logo-brand. Final app icon for Helper Hub, a useful web toolkit. Square opaque canvas completely filled edge-to-edge with perfectly flat forest green #254d3b. In the center, one bold, clean geometric lowercase h in warm white #f8f8f2, with thick rounded ends and one small rounded-square lime #c5d88b accent floating above its right shoulder. Minimal legible geometric design suitable for 16px favicon. Symbol occupies 72 percent of canvas. Crisp solid colors. Only these three solid colors. No words, no border, no texture, no gradients, no shadows, no mockup, no transparency.
+
+### Páginas públicas por ferramenta
+
+A branch principal deste repositório é master. As páginas por ferramenta são renderizadas no servidor com título, descrição, canonical, conteúdo e dados estruturados próprios. O sitemap em /sitemap.xml é gerado a partir do catálogo em ToolPageCatalog. A interface atualiza a URL e os metadados ao navegar, preservando o arquivo selecionado quando compatível.
+
+O código no repositório e a versão em produção devem ser conferidos separadamente. Depois de publicar um commit, acompanhe o deploy da aplicação helperhub-app no Coolify até ficar saudável e confira a página inicial, uma rota direta como /comprimir-imagem e /sitemap.xml pelo domínio público.

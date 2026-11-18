@@ -55,6 +55,9 @@ public class ToolPageRenderer {
         .replace("{{H1}}", escape(page.h1()))
         .replace("{{LEAD}}", escape(page.lead()))
         .replace("{{TOOL_NAV}}", buildToolNav(page))
+        .replace("{{EXPLORE_CONTENT}}", buildExploreContent())
+        .replace("{{EXPLORE_HIDDEN}}", page.homePage() ? "" : "hidden")
+        .replace("{{EDITOR_HIDDEN}}", page.homePage() ? "hidden" : "")
         .replace("{{SEO_CONTENT}}", buildSeoContent(page, removeBgEnabled))
         .replace("{{PAGE_CATALOG_JSON}}", buildClientCatalogJson(removeBgEnabled));
   }
@@ -87,6 +90,9 @@ public class ToolPageRenderer {
 
   private static String buildToolNav(ToolPageDefinition currentPage) {
     StringBuilder nav = new StringBuilder();
+    nav.append("<a class=\"explore-link\" href=\"/\" data-home")
+        .append(currentPage.homePage() ? " aria-current=\"page\"" : "")
+        .append(">Explore as ferramentas</a>\n");
     for (String category : CATEGORY_ORDER) {
       boolean open = category.equals(currentPage.category())
           || (currentPage.homePage() && "IMAGEM".equals(category));
@@ -95,12 +101,14 @@ public class ToolPageRenderer {
           .append("\" name=\"tool-category\"")
           .append(open ? " open" : "")
           .append(">\n");
-      nav.append("<summary>").append(escape(CATEGORY_TITLES.get(category))).append("</summary>\n");
+      long count = ToolPageCatalog.tools().stream().filter(tool -> category.equals(tool.category())).count();
+      nav.append("<summary><span>").append(escape(CATEGORY_TITLES.get(category)))
+          .append("</span><small>").append(count).append(" ferramentas</small></summary>\n");
       for (ToolPageDefinition tool : ToolPageCatalog.tools()) {
         if (!category.equals(tool.category())) {
           continue;
         }
-        boolean active = tool.toolKey().equals(currentPage.toolKey());
+        boolean active = !currentPage.homePage() && tool.toolKey().equals(currentPage.toolKey());
         nav.append("<a class=\"tool-link\" href=\"")
             .append(escape(tool.path()))
             .append("\" data-tool=\"")
@@ -118,6 +126,25 @@ public class ToolPageRenderer {
       nav.append("</details>\n");
     }
     return nav.toString();
+  }
+
+  private static String buildExploreContent() {
+    StringBuilder html = new StringBuilder();
+    var featuredKeys = List.of("compress", "crop", "cut", "audioConvert", "extract", "youtube");
+    for (String category : CATEGORY_ORDER) {
+      html.append("<section class=\"explore-category\"><h3>")
+          .append(escape(CATEGORY_TITLES.get(category))).append("</h3><div class=\"explore-cards\">");
+      for (ToolPageDefinition tool : ToolPageCatalog.tools()) {
+        if (category.equals(tool.category()) && featuredKeys.contains(tool.toolKey())) {
+          html.append("<a class=\"explore-card\" href=\"").append(escape(tool.path()))
+              .append("\" data-tool=\"").append(escape(tool.toolKey())).append("\">")
+              .append("<strong>").append(escape(tool.navLabel())).append(" <span aria-hidden=\"true\">↗</span></strong>")
+              .append("<span>").append(escape(tool.lead())).append("</span></a>");
+        }
+      }
+      html.append("</div></section>");
+    }
+    return html.toString();
   }
 
   private static String buildSeoContent(ToolPageDefinition page, boolean removeBgEnabled) {
@@ -223,6 +250,10 @@ public class ToolPageRenderer {
     entry.put("path", page.path());
     entry.put("toolKey", page.toolKey());
     entry.put("title", page.title());
+    entry.put("description", page.metaDescription());
+    entry.put("robots", page.homePage() || !"removeBg".equals(page.toolKey()) || removeBgEnabled
+        ? "index, follow" : "noindex, follow");
+    entry.put("jsonLd", buildJsonLd(page, ToolPageCatalog.BASE_URL + page.path()));
     entry.put("canonicalUrl", ToolPageCatalog.BASE_URL + page.path());
     entry.put("eyebrow", page.eyebrow());
     entry.put("h1", page.h1());

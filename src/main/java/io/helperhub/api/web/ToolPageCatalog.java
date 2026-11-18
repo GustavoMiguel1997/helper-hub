@@ -16,7 +16,7 @@ public final class ToolPageCatalog {
 
   private static final ToolPageDefinition HOME = new ToolPageDefinition(
       "/",
-      "resize",
+      "explore",
       "GERAL",
       "Início",
       "HelperHub — Ferramentas online gratuitas de imagem, áudio e vídeo",
