@@ -157,6 +157,10 @@ A marca foi criada com o ImageGen integrado. Prompt final usado:
 
 ### Páginas públicas por ferramenta
 
+O painel tem altura externa de 900 px no desktop, com rolagem interna para prévias e resultados maiores. O menu e a área de entrada mantêm as mesmas dimensões ao trocar de ferramenta. No celular, o editor tem altura mínima de 1000 px e cresce com o conteúdo. As três categorias ficam em uma linha e as ferramentas aparecem abaixo, em uma grade com espaço reservado para até seis opções.
+
+As páginas de ferramentas incluem uma trilha visível Explore / ferramenta, acompanhada de BreadcrumbList no JSON-LD. A trilha e os dados estruturados acompanham a navegação sem recarregar a página. O atalho de teclado Ir para a ferramenta leva o foco ao editor.
+
 As páginas /comprimir-imagem-500kb e /converter-png-para-jpg oferecem conteúdo próprio e abrem os presets correspondentes. A primeira seleciona o teto de 500.000 bytes, preservando a opção de autorizar redução das dimensões. A segunda seleciona JPEG com qualidade 85. Ambas entram no sitemap e nos links internos, com canonical próprio. O menu principal mantém os destinos gerais de cada ferramenta.
 
 O cabeçalho e o rodapé usam versões WebP do logo de 38 px (448 bytes) e 76 px (728 bytes) por srcset. O logo original e os favicons continuam disponíveis nos arquivos estáticos.

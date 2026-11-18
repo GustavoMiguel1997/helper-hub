@@ -2,6 +2,8 @@ package io.helperhub.api.web;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -60,6 +62,29 @@ class WebPageControllerTest {
         .andExpect(status().isOk())
         .andExpect(content().string(containsString("<meta name=\"robots\" content=\"noindex, follow\">")))
         .andExpect(content().string(containsString("data-initial-tool=\"removeBg\"")));
+  }
+
+  @Test
+  void toolBreadcrumbMatchesVisiblePageAndCanonical() throws Exception {
+    String html = mockMvc.perform(get("/comprimir-imagem-500kb"))
+        .andExpect(status().isOk())
+        .andReturn().getResponse().getContentAsString();
+    var script = java.util.regex.Pattern.compile(
+        "<script type=\"application/ld\\+json\">(.*?)</script>",
+        java.util.regex.Pattern.DOTALL).matcher(html);
+    assertTrue(script.find());
+    var graph = new com.fasterxml.jackson.databind.ObjectMapper()
+        .readTree(script.group(1)).get("@graph");
+    var breadcrumb = java.util.stream.StreamSupport.stream(graph.spliterator(), false)
+        .filter(node -> "BreadcrumbList".equals(node.path("@type").asText()))
+        .findFirst().orElseThrow();
+    var items = breadcrumb.get("itemListElement");
+    assertEquals(2, items.size());
+    assertEquals("https://helperhub.gmslab.cloud/", items.get(0).get("item").asText());
+    assertEquals(1, items.get(0).get("position").asInt());
+    assertEquals("https://helperhub.gmslab.cloud/comprimir-imagem-500kb", items.get(1).get("item").asText());
+    assertEquals("Comprimir imagem para 500 KB", items.get(1).get("name").asText());
+    assertTrue(html.contains("<nav class=\"breadcrumb\""));
   }
 
   @Test

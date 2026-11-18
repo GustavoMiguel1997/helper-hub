@@ -55,6 +55,7 @@ public class ToolPageRenderer {
         .replace("{{H1}}", escape(page.h1()))
         .replace("{{LEAD}}", escape(page.lead()))
         .replace("{{TOOL_NAV}}", buildToolNav(page))
+        .replace("{{BREADCRUMB}}", buildBreadcrumb(page))
         .replace("{{EXPLORE_CONTENT}}", buildExploreContent())
         .replace("{{EXPLORE_HIDDEN}}", page.homePage() ? "" : "hidden")
         .replace("{{EDITOR_HIDDEN}}", page.homePage() ? "hidden" : "")
@@ -94,8 +95,7 @@ public class ToolPageRenderer {
         .append(currentPage.homePage() ? " aria-current=\"page\"" : "")
         .append(">Explore as ferramentas</a>\n");
     for (String category : CATEGORY_ORDER) {
-      boolean open = category.equals(currentPage.category())
-          || (currentPage.homePage() && "IMAGEM".equals(category));
+      boolean open = category.equals(currentPage.category());
       nav.append("<details class=\"tool-category\" data-category=\"")
           .append(escape(category))
           .append("\" name=\"tool-category\"")
@@ -104,6 +104,7 @@ public class ToolPageRenderer {
       long count = ToolPageCatalog.tools().stream().filter(tool -> category.equals(tool.category())).count();
       nav.append("<summary><span>").append(escape(CATEGORY_TITLES.get(category)))
           .append("</span><small>").append(count).append(" ferramentas</small></summary>\n");
+      nav.append("<div class=\"tool-links\">\n");
       for (ToolPageDefinition tool : ToolPageCatalog.tools()) {
         if (!category.equals(tool.category())) {
           continue;
@@ -123,7 +124,7 @@ public class ToolPageRenderer {
             .append(escape(tool.navLabel()))
             .append("</a>\n");
       }
-      nav.append("</details>\n");
+      nav.append("</div></details>\n");
     }
     return nav.toString();
   }
@@ -145,6 +146,14 @@ public class ToolPageRenderer {
       html.append("</div></section>");
     }
     return html.toString();
+  }
+
+  private static String buildBreadcrumb(ToolPageDefinition page) {
+    if (page.homePage()) {
+      return "<span aria-current=\"page\">Explore</span>";
+    }
+    return "<a href=\"/\">Explore</a><span aria-hidden=\"true\">/</span><span aria-current=\"page\">"
+        + escape(page.navLabel()) + "</span>";
   }
 
   private static String buildSeoContent(ToolPageDefinition page, boolean removeBgEnabled) {
@@ -212,6 +221,18 @@ public class ToolPageRenderer {
     appNode.put("description", page.metaDescription());
     graph.add(appNode);
 
+    if (!page.homePage()) {
+      graph.add(Map.of(
+          "@type", "BreadcrumbList",
+          "itemListElement", List.of(
+              Map.of("@type", "ListItem", "position", 1, "name", "Explore",
+                  "item", ToolPageCatalog.BASE_URL + "/"),
+              Map.of("@type", "ListItem", "position", 2, "name", page.navLabel(),
+                  "item", canonicalUrl)
+          )
+      ));
+    }
+
     if (!page.faqs().isEmpty()) {
       List<Map<String, Object>> entities = new ArrayList<>();
       for (FaqItem faq : page.faqs()) {
@@ -250,6 +271,7 @@ public class ToolPageRenderer {
     entry.put("path", page.path());
     entry.put("toolKey", page.toolKey());
     entry.put("presets", ToolPageCatalog.presetValues(page.path()));
+    entry.put("breadcrumbHtml", buildBreadcrumb(page));
     entry.put("title", page.title());
     entry.put("description", page.metaDescription());
     entry.put("robots", page.homePage() || !"removeBg".equals(page.toolKey()) || removeBgEnabled

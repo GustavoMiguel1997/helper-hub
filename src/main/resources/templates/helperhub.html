@@ -20,16 +20,18 @@
   <meta name="twitter:title" content="{{OG_TITLE}}">
   <meta name="twitter:description" content="{{OG_DESCRIPTION}}">
   <script type="application/ld+json">{{JSON_LD}}</script>
-  <link rel="stylesheet" href="/styles.css?v=presets-4">
+  <link rel="stylesheet" href="/styles.css?v=stable-panel-5">
   <script id="page-catalog" type="application/json">{{PAGE_CATALOG_JSON}}</script>
   <script src="/audio-editor.js?v=2600d1a7ede9" defer></script>
   <script src="/image-editor.js?v=image-editor-2" defer></script>
-  <script src="/app.js?v=presets-4" defer></script>
+  <script src="/app.js?v=stable-panel-5" defer></script>
 </head>
 <body data-initial-tool="{{INITIAL_TOOL}}">
+  <a class="skip-link" href="#workspace-editor">Ir para a ferramenta</a>
   <header class="topbar"><a class="brand" href="/" aria-label="HelperHub início"><img class="brand-logo" src="/logo-76.webp" srcset="/logo-38.webp 1x, /logo-76.webp 2x" decoding="async" width="38" height="38" alt="">helperhub<span class="beta">BETA</span></a></header>
   <main>
     <section class="intro"><div><p class="eyebrow" id="intro-eyebrow"><span class="dot"></span> <span id="intro-eyebrow-text">{{INTRO_EYEBROW}}</span></p><h1 id="page-h1">{{H1}}</h1><p class="lead" id="page-lead">{{LEAD}}</p></div><div class="intro-art" aria-hidden="true"><span class="art-label">SEU PEQUENO<br>ESTÚDIO DIGITAL</span><div class="art-shape">✳</div><span class="art-caption">criar · ajustar · continuar</span></div></section>
+    <nav class="breadcrumb" id="breadcrumb" aria-label="Caminho da página">{{BREADCRUMB}}</nav>
     <section class="workspace" aria-label="Ferramentas de mídia">
       <aside class="toolbox">
           <p class="menu-heading">Ferramentas</p>
@@ -38,13 +40,13 @@
           </nav>
         <p class="toolbox-note">Sem cadastro, sem complicação.</p>
       </aside>
-      <div class="editor">
+      <div class="editor" id="workspace-editor" tabindex="-1">
         <section id="explore-panel" {{EXPLORE_HIDDEN}} aria-labelledby="explore-title">
           <h2 id="explore-title">O que você quer fazer?</h2>
           <p class="muted">Escolha uma ferramenta para começar.</p>
           {{EXPLORE_CONTENT}}
         </section>
-        <div id="tool-editor" {{EDITOR_HIDDEN}}><div class="editor-heading"><div><p class="eyebrow" id="tool-category">FERRAMENTA DE IMAGEM</p><h2 id="tool-title">O tamanho certo, sem esforço.</h2></div><span class="step-label">01 — 03</span></div><p id="tool-description" class="muted">Ajuste as dimensões mantendo a proporção e os detalhes da sua imagem.</p>
+        <div id="tool-editor" {{EDITOR_HIDDEN}}><div class="editor-heading"><div><p class="eyebrow" id="tool-category">FERRAMENTA DE IMAGEM</p><h2 id="tool-title">O tamanho certo, sem esforço.</h2></div></div><p id="tool-description" class="muted">Ajuste as dimensões mantendo a proporção e os detalhes da sua imagem.</p>
         <form id="tool-form"><fieldset id="controls"><legend class="sr-only">Arquivo e opções de processamento</legend>
           <label id="batch-option" class="check-option" hidden><input id="batch-mode" type="checkbox"> Processar em lote (ZIP)</label>
           <div id="upload-area"><label class="dropzone" id="dropzone" for="file"><span class="upload-icon" aria-hidden="true">↑</span><strong id="file-title">Solte sua imagem aqui</strong><span id="file-hint">ou clique para escolher um arquivo</span><span class="file-types" id="file-types">JPG, PNG ou WebP · até 50 MB</span><input id="file" name="file" type="file" accept=".jpg,.jpeg,.png,.webp" required></label><div id="source-preview" hidden></div></div>

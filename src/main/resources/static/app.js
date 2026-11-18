@@ -52,6 +52,7 @@ for (const entry of pageCatalogEntries) {
 function applyPageMetadata(page) {
   if (!page) return;
   document.title = page.title;
+  if($('breadcrumb')) $('breadcrumb').innerHTML = page.breadcrumbHtml;
   for(const [selector, value] of [
     ['meta[name="description"]', page.description],
     ['meta[name="robots"]', page.robots],
@@ -81,6 +82,7 @@ function navigateToPage(page, pushHistory = true) {
   if(pushHistory && window.location.pathname !== page.path) {
     window.history.pushState({tool:page.toolKey}, '', page.path);
   }
+  $('workspace-editor').scrollTop = 0;
   applyPageMetadata(page);
   document.body.dataset.initialTool = page.toolKey;
   $('explore-panel').hidden = !page.homePage;
@@ -102,7 +104,7 @@ function navigateToPage(page, pushHistory = true) {
       link.removeAttribute('aria-current');
     });
     document.querySelectorAll('.tool-category').forEach(group => {
-      group.open = !window.matchMedia('(max-width:640px)').matches && group.dataset.category === 'IMAGEM';
+      group.open = false;
     });
   } else {
     selectTool(page.toolKey);
@@ -335,7 +337,7 @@ document.querySelectorAll('[data-tool]').forEach(link => link.addEventListener('
   event.preventDefault();
   navigateToTool(link.dataset.tool, true);
 }));
-$('seo-guide')?.addEventListener('click', event => {
+for(const region of ['seo-guide','breadcrumb']) $(region)?.addEventListener('click', event => {
   if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
   const anchor = event.target.closest('a[href]');
   if (!anchor) return;
