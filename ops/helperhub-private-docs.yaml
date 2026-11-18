@@ -1,0 +1,27 @@
+# Traefik dynamic configuration for the public Helper Hub hostname.
+# Tailscale Serve reaches the app through 127.0.0.1:14003, bypassing this router.
+http:
+  routers:
+    helperhub-private-docs:
+      entryPoints:
+        - https
+      rule: "Host(`helperhub.gmslab.cloud`) && (PathPrefix(`/swagger-ui`) || PathPrefix(`/v3/api-docs`) || PathPrefix(`/webjars/swagger-ui`) || PathPrefix(`/swagger-resources`))"
+      priority: 1100
+      service: noop@internal
+      tls:
+        certResolver: letsencrypt
+      middlewares:
+        - helperhub-deny-public-docs
+    helperhub-private-docs-http:
+      entryPoints:
+        - http
+      rule: "Host(`helperhub.gmslab.cloud`) && (PathPrefix(`/swagger-ui`) || PathPrefix(`/v3/api-docs`) || PathPrefix(`/webjars/swagger-ui`) || PathPrefix(`/swagger-resources`))"
+      priority: 1100
+      service: noop@internal
+      middlewares:
+        - helperhub-deny-public-docs
+  middlewares:
+    helperhub-deny-public-docs:
+      ipAllowList:
+        sourceRange:
+          - "127.0.0.1/32"

@@ -1,5 +1,5 @@
 const tools = {
-  compress: {category:'IMAGEM', title:'Menos peso. Mais possibilidades.', description:'Ajuste a qualidade, compare o resultado e escolha o que fica melhor para você.', endpoint:'/api/image/compress', action:'Comprimir imagem', type:'image', fields:[['jpegQuality','Qualidade JPEG (1–100)','range','75']], note:'Saída em JPEG, nas dimensões originais. Transparência vira fundo branco. A redução depende do arquivo; o resultado pode ficar maior.'},
+  compress: {category:'IMAGEM', title:'Menos peso. Mais possibilidades.', description:'Escolha um tamanho máximo ou ajuste a qualidade do JPEG.', endpoint:'/api/image/compress', action:'Comprimir imagem', type:'image', fields:[['targetBytes','Tamanho máximo por imagem','select','manual,500000,1000000,2000000,custom'],['customTarget','Tamanho máximo (KB)','number',''],['allowResize','Permitir reduzir as dimensões para atingir o tamanho-alvo','checkbox','true'],['jpegQuality','Qualidade JPEG (1–100)','range','75']], note:'Saída em JPEG. Áreas transparentes recebem fundo branco.'},
   extract: {category:'VÍDEO', title:'Leve só o som com você.', description:'Envie um vídeo e extraia sua primeira faixa de áudio no formato que preferir.', endpoint:'/api/audio/extract', action:'Extrair áudio', type:'videoUpload', fields:[['targetFormat','Formato de saída','select','MP3,WAV,AAC,OGG,FLAC,OPUS']], note:'O vídeo precisa conter uma faixa de áudio. Upload de até 50 MB.'},
   resize: {category:'IMAGEM', title:'O tamanho certo, sem esforço.', description:'Ajuste as dimensões mantendo a proporção. Imagens menores não são ampliadas.', endpoint:'/api/image/resize', action:'Redimensionar imagem', type:'image', fields:[['maxWidth','Largura máxima (px)','number','1200'],['maxHeight','Altura máxima (px)','number',''],['outputFormat','Formato de saída','select','AUTO,PNG,JPEG'],['jpegQuality','Qualidade JPEG (1–100)','number','85']]},
   imageConvert: {category:'IMAGEM', title:'Um novo formato. A mesma ideia.', description:'Converta sua imagem para PNG ou JPEG mantendo as dimensões originais.', endpoint:'/api/image/convert', action:'Converter imagem', type:'image', fields:[['outputFormat','Formato de saída','select','PNG,JPEG'],['jpegQuality','Qualidade JPEG (1–100)','number','85']]},
@@ -13,7 +13,10 @@ const imageExtensions = '.jpg,.jpeg,.png,.webp';
 const videoExtensions = '.mp4,.webm,.mkv,.mov,.avi,.wmv,.mpeg,.mpg,.3gp';
 const audioExtensions = '.mp3,.m4a,.aac,.wav,.flac,.ogg,.opus,.wma,.aiff,.aif,.caf,' + videoExtensions;
 const uploadLimit = 50 * 1024 * 1024;
+const batchOperations = {compress:'COMPRESS', resize:'RESIZE', imageConvert:'CONVERT'};
+const targetLabels = {manual:'Ajustar qualidade', 500000:'500 KB', 1000000:'1 MB', 2000000:'2 MB', custom:'Personalizado'};
 const sourceFiles = {image:null, media:null};
+let batchFiles = [];
 let audioEditor = null;
 let current = 'resize', file = null, sourceUrl = null, resultUrl = null, comparisonUrl = null, resultFile = null, busy = false;
 function extensions(tool) { return tool.type === 'image' ? imageExtensions : tool.type === 'videoUpload' ? videoExtensions : audioExtensions; }
@@ -38,6 +41,10 @@ function selectTool(key) {
   if (busy) return;
   audioEditor?.destroy(); audioEditor = null;
   current = key; file = null; $('file').value = ''; status();
+  batchFiles = [];
+  $('batch-mode').checked = false;
+  $('batch-option').hidden = !batchOperations[key];
+  $('file').multiple = false;
   if(sourceUrl) URL.revokeObjectURL(sourceUrl); sourceUrl = null;
   $('source-preview').replaceChildren(); $('source-preview').hidden = true;
   const tool = tools[key];
@@ -59,9 +66,13 @@ function selectTool(key) {
     const wrapper = document.createElement('div'), caption = document.createElement('label');
     caption.htmlFor = name; caption.textContent = label;
     const control = document.createElement(type === 'select' ? 'select' : 'input'); control.id = name; control.name = name;
-    if(type === 'select') for(const item of value.split(',')) { const option = document.createElement('option'); option.value = item; option.textContent = item === 'AUTO' ? 'Automático' : item === 'AAC' ? 'AAC / M4A' : item; control.append(option); }
+    if(type === 'select') for(const item of value.split(',')) { const option = document.createElement('option'); option.value = item; option.textContent = name === 'targetBytes' ? targetLabels[item] : item === 'AUTO' ? 'Automático' : item === 'AAC' ? 'AAC / M4A' : item; control.append(option); }
     else { control.type = type; control.value = value; control.min = name === 'start' ? '0' : '1'; control.step = ['start','end'].includes(name) ? '0.001' : '1'; if(['start','end'].includes(name)) {control.min='0'; control.required = true;} else control.max = name === 'jpegQuality' ? '100' : '8192'; }
-    wrapper.append(caption,control);
+    if(type === 'checkbox') {
+      caption.classList.add('check-option');
+      caption.prepend(control);
+      wrapper.append(caption);
+    } else wrapper.append(caption,control);
     if(type === 'range') {
       control.max = '100'; control.min = '1';
       const valueLabel = document.createElement('output'); valueLabel.htmlFor = name; valueLabel.textContent = control.value;
@@ -71,6 +82,11 @@ function selectTool(key) {
     $('options').append(wrapper);
   }
   if($('outputFormat')) $('outputFormat').addEventListener('change', updateQuality);
+  if($('targetBytes')) {
+    $('customTarget').min = '2';
+    $('customTarget').max = '10000';
+    $('targetBytes').addEventListener('change', updateQuality);
+  }
   updateQuality();
   const saved = sourceFiles[family(tool)];
   if(key !== 'youtube' && acceptsFile(tool, saved)) {
@@ -78,7 +94,69 @@ function selectTool(key) {
     status('Arquivo mantido. Ajuste as opções e continue quando quiser.');
   }
 }
-function updateQuality() { if($('jpegQuality')) $('jpegQuality').disabled = $('outputFormat')?.value === 'PNG'; }
+function updateQuality() {
+  const mode = $('targetBytes')?.value;
+  const target = mode && mode !== 'manual';
+  const quality = $('jpegQuality');
+  if(quality) quality.disabled = Boolean(target) || $('outputFormat')?.value === 'PNG';
+  if(mode) {
+    quality.parentElement.hidden = Boolean(target);
+    const custom = $('customTarget');
+    custom.parentElement.hidden = mode !== 'custom';
+    custom.disabled = mode !== 'custom';
+    custom.required = mode === 'custom';
+    $('allowResize').closest('.check-option').parentElement.hidden = !target;
+    $('allowResize').disabled = !target;
+  }
+}
+function updateBatchMode() {
+  const batch = $('batch-mode').checked;
+  $('file').value = '';
+  $('file').multiple = batch;
+  $('file').required = true;
+  file = null;
+  batchFiles = [];
+  if(sourceUrl) URL.revokeObjectURL(sourceUrl);
+  sourceUrl = null;
+  $('source-preview').replaceChildren();
+  $('source-preview').hidden = true;
+  $('file-title').textContent = batch ? 'Solte suas imagens aqui' : 'Solte sua imagem aqui';
+  $('file-hint').textContent = batch ? 'ou clique para escolher imagens' : 'ou clique para escolher um arquivo';
+  $('file-types').textContent = batch ? 'JPG, PNG ou WebP · até 5 imagens e 50 MB no total' : 'JPG, PNG ou WebP · até 50 MB';
+  $('submit-label').textContent = batch ? 'Processar e gerar ZIP' : tools[current].action;
+  clearResult();
+  status();
+  if(!batch && acceptsFile(tools[current], sourceFiles.image)) renderSource(sourceFiles.image);
+}
+function setUpload(files) {
+  if(busy || files.length === 0) return;
+  if(!$('batch-mode').checked) {
+    if(files.length === 1) setFile(files[0]);
+    else status('Selecione um arquivo ou ative Processar em lote.', true);
+    return;
+  }
+  const selected = Array.from(files);
+  if(selected.length > 5 || selected.some(item => !acceptsFile(tools[current], item))
+      || selected.reduce((size, item) => size + item.size, 0) > uploadLimit) {
+    $('file').value = '';
+    status('Selecione até 5 imagens JPG, PNG ou WebP não vazias, com até 50 MB no total.', true);
+    return;
+  }
+  batchFiles = selected;
+  $('file').required = false;
+  $('file-title').textContent = `${selected.length} ${selected.length === 1 ? 'imagem selecionada' : 'imagens selecionadas'}`;
+  $('file-hint').textContent = 'Clique para trocar o lote';
+  const list = document.createElement('ul');
+  for(const item of selected) {
+    const row = document.createElement('li');
+    row.textContent = `${item.name} · ${formatSize(item.size)}`;
+    list.append(row);
+  }
+  $('source-preview').replaceChildren(list);
+  $('source-preview').hidden = false;
+  clearResult();
+  status();
+}
 function renderSource(selected) {
   audioEditor?.destroy(); audioEditor = null;
   file = selected; $('file').required = false;
@@ -109,13 +187,14 @@ function imageFigure(url, title, size) {
   image.addEventListener('load', () => { caption.textContent = `${title} · ${formatSize(size)} · ${image.naturalWidth} × ${image.naturalHeight} px`; });
   figure.append(caption, image); return figure;
 }
-function renderResult(blob, filename, original) {
+function renderResult(blob, filename, original, batch) {
   resultFile = new File([blob], filename, {type:blob.type});
   resultUrl = URL.createObjectURL(resultFile);
-  $('download').textContent = current === 'cut' ? 'Baixar corte ↓' : 'Baixar arquivo ↓';
+  $('download').textContent = batch ? 'Baixar ZIP ↓' : current === 'cut' ? 'Baixar corte ↓' : 'Baixar arquivo ↓';
   $('download').href = resultUrl; $('download').download = filename;
   $('result-meta').textContent = `${filename} · ${formatSize(blob.size)}`;
   $('result').hidden = false;
+  $('continue-area').hidden = batch;
   const kind = blob.type.split('/')[0];
   const previewArea = $('result-preview'); previewArea.classList.remove('image-comparison');
   if(kind === 'image' && original) {
@@ -155,17 +234,29 @@ $('use-result').addEventListener('click', () => {
   $('tool-title').scrollIntoView({behavior:'smooth', block:'center'});
 });
 document.querySelectorAll('[data-tool]').forEach(button => button.addEventListener('click', () => selectTool(button.dataset.tool)));
-$('file').addEventListener('change', event => setFile(event.target.files[0]));
+$('batch-mode').addEventListener('change', updateBatchMode);
+$('file').addEventListener('change', event => setUpload(event.target.files));
 for(const name of ['dragenter','dragover']) $('dropzone').addEventListener(name, event => { event.preventDefault(); if(!busy) $('dropzone').classList.add('dragging'); });
 for(const name of ['dragleave','drop']) $('dropzone').addEventListener(name, event => { event.preventDefault(); $('dropzone').classList.remove('dragging'); });
-$('dropzone').addEventListener('drop', event => { if(busy) return; if(event.dataTransfer.files.length !== 1) {status('Selecione um arquivo por vez.', true); return;} $('file').files = event.dataTransfer.files; setFile(event.dataTransfer.files[0]); });
+$('dropzone').addEventListener('drop', event => setUpload(event.dataTransfer.files));
 $('tool-form').addEventListener('submit', async event => {
   event.preventDefault(); if(busy) return;
   const tool = tools[current], data = new FormData();
+  const batch = $('batch-mode').checked;
   if(current === 'youtube') data.set('url', $('url').value.trim());
+  else if(batch) {
+    if(!batchFiles.length) { status('Escolha as imagens do lote.', true); return; }
+    data.set('operation', batchOperations[current]);
+    for(const item of batchFiles) data.append('files', item);
+  }
   else { if(!acceptsFile(tool, file)) { status('Escolha um arquivo para continuar.', true); return; } data.set('file',file); }
   if(current === 'resize' && !$('maxWidth').value && !$('maxHeight').value) {status('Informe a largura ou a altura máxima.', true); return;}
-  for(const [name] of tool.fields) { const control = $(name); if(!control.disabled && control.value !== '' && !['start','end'].includes(name)) data.set(name, control.value); }
+  for(const [name] of tool.fields) { const control = $(name); if(!control.disabled && control.value !== '' && !['start','end','targetBytes','customTarget','allowResize'].includes(name)) data.set(name, control.value); }
+  if(current === 'compress' && $('targetBytes').value !== 'manual') {
+    const target = $('targetBytes').value;
+    data.set('targetBytes', target === 'custom' ? Number($('customTarget').value) * 1000 : target);
+    data.set('allowResize', $('allowResize').checked);
+  }
   if(current === 'cut') {
     const start = Math.round(Number($('start').value)*1000), end = Math.round(Number($('end').value)*1000);
     if(end <= start || end-start > 1800000) {status('O fim deve ser maior que o início e o trecho deve ter até 30 minutos.', true); return;}
@@ -177,7 +268,7 @@ $('tool-form').addEventListener('submit', async event => {
   document.querySelectorAll('[data-tool]').forEach(button => button.disabled = true);
   $('submit-label').textContent = 'Processando…'; status('Estamos preparando seu arquivo. Mantenha esta página aberta.');
   try {
-    const response = await fetch(tool.endpoint, {method:'POST', body:data, headers:{Accept:'*/*'}});
+    const response = await fetch(batch ? '/api/image/batch' : tool.endpoint, {method:'POST', body:data, headers:{Accept:'*/*'}});
     if(!response.ok) {
       let body; try { body = await response.json(); } catch { body = {}; }
       const messages = {REMBG_NOT_CONFIGURED:'A remoção de fundo ainda não está disponível neste servidor.', YTDLP_NOT_AVAILABLE:'O download de vídeos ainda não está disponível neste servidor.'};
@@ -187,14 +278,14 @@ $('tool-form').addEventListener('submit', async event => {
     const blob = await response.blob(); if(!blob.size) throw new Error('O servidor retornou um arquivo vazio.');
     const disposition = response.headers.get('Content-Disposition') || '';
     const encoded = disposition.match(/filename\*=UTF-8''([^;]+)/i), plain = disposition.match(/filename="([^"]+)"/i);
-    let filename = 'helperhub-resultado';
+    let filename = batch ? 'helperhub-imagens.zip' : 'helperhub-resultado';
     try { filename = encoded ? decodeURIComponent(encoded[1]) : plain ? plain[1] : filename; } catch { /* Keep fallback filename. */ }
-    renderResult(blob, filename, original);
+    renderResult(blob, filename, original, batch);
     if(current === 'cut') {
       $('download').click();
       status('Corte pronto! Download solicitado. Se não começar, clique em Baixar corte.');
     } else status('Pronto! Seu arquivo está disponível para download.');
   } catch(error) { status(error instanceof TypeError ? 'Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.' : error?.message || 'Não foi possível concluir a operação. Tente novamente.', true); }
-  finally { busy = false; $('controls').disabled = false; document.querySelectorAll('[data-tool]').forEach(button => button.disabled = false); $('submit-label').textContent = tool.action; }
+  finally { busy = false; $('controls').disabled = false; document.querySelectorAll('[data-tool]').forEach(button => button.disabled = false); $('submit-label').textContent = batch ? 'Processar e gerar ZIP' : tool.action; }
 });
 selectTool('resize');

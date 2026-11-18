@@ -91,13 +91,13 @@ public class ImageController {
     return attachmentResponse(result);
   }
 
-  @Operation(summary = "Comprimir imagem", description = "Reencoda sem redimensionar. JPEG com qualidade 75 por padrão; transparência em JPEG vira fundo branco. O resultado pode ser maior que a entrada.")
+  @Operation(summary = "Comprimir imagem", description = "Em JPEG, targetBytes define um teto em bytes e allowResize permite reduzir as dimensões.")
   @PostMapping(value = "/compress", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<Resource> compress(@Valid @ModelAttribute ImageCompressRequest request) {
     return attachmentResponse(imageResizeService.compress(request));
   }
 
-  private static ResponseEntity<Resource> attachmentResponse(ImageFileOutputDto result) {
+  static ResponseEntity<Resource> attachmentResponse(ImageFileOutputDto result) {
     Path path = result.tempOutputFile();
     try {
       long length = Files.size(path);

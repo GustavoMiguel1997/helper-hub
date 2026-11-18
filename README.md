@@ -21,7 +21,9 @@ $env:HELPERHUB_VIDEO_YT_DLP_COMMAND = (Resolve-Path .tools/yt-dlp/Scripts/yt-dlp
 .\gradlew.bat bootRun
 ```
 
-Abra <http://localhost:8080>. A documentação interativa está em <http://localhost:8080/swagger-ui/index.html> e o contrato OpenAPI em <http://localhost:8080/v3/api-docs>.
+Abra <http://localhost:8080>. A documentação interativa local está em <http://localhost:8080/swagger-ui/index.html> e o contrato OpenAPI em <http://localhost:8080/v3/api-docs>.
+
+Em produção, a documentação fica acessível pela rede Tailscale em <https://srv1760039.tail41fec8.ts.net:4003/swagger-ui/index.html>. Conecte o dispositivo ao Tailscale para abrir essa URL. O domínio público bloqueia a interface, o contrato OpenAPI, a configuração do Swagger e os assets da documentação. A regra está em `ops/helperhub-private-docs.yaml`, instalada em `/data/coolify/proxy/dynamic/helperhub-private-docs.yaml`. O Tailscale Serve encaminha a porta 4003 para `127.0.0.1:14003`, a porta de loopback do contêiner configurada no Coolify. A API de processamento continua disponível pelo domínio público.
 
 A chave remove.bg é necessária somente para remover fundos. Essa operação envia a imagem ao serviço externo e usa os créditos da conta configurada. As demais operações continuam disponíveis sem a chave.
 
@@ -49,7 +51,8 @@ Todas as operações são `POST`. Envie campos como `multipart/form-data`; o dow
 
 | Endpoint | Campos |
 | --- | --- |
-| `/api/image/compress` | `file`; opcionais `jpegQuality=1..100` (75 por padrão), `outputFormat=JPEG/PNG` (JPEG por padrão). Não redimensiona nem garante redução de tamanho. |
+| `/api/image/compress` | `file`; opcionais `jpegQuality=1..100` (75 por padrão), `outputFormat=JPEG/PNG` (JPEG por padrão). Em JPEG, `targetBytes=1024..10000000` ativa a meta por arquivo e substitui a qualidade manual. Com `allowResize=true`, reduz as dimensões se ajustar a qualidade for insuficiente. |
+| `/api/image/batch` | 1 a 5 campos `files` e `operation=COMPRESS/CONVERT/RESIZE`, com as opções da operação correspondente. Retorna um ZIP. |
 | `/api/image/resize` | `file`, `maxWidth` e/ou `maxHeight`; opcionais `outputFormat=AUTO/PNG/JPEG`, `jpegQuality=1..100` |
 | `/api/image/convert` | `file`, `outputFormat=PNG/JPEG`; opcional `jpegQuality` |
 | `/api/image/remove-background` | `file` (JPG, PNG ou WebP); retorna PNG |
@@ -117,7 +120,11 @@ Referências: [yt-dlp](https://github.com/yt-dlp/yt-dlp), [TwelveMonkeys ImageIO
 
 A interface mantém o último arquivo de imagem e de mídia em memória durante a sessão da página. Ao trocar de ferramenta, o arquivo é reaproveitado se for compatível; não é enviado automaticamente. Cada resultado oferece **Continuar com este arquivo**, que o transforma na entrada da próxima operação sem baixar e selecionar novamente. Recarregar a página descarta esses arquivos da interface.
 
-Resultados acima de 50 MB continuam disponíveis para download, mas não podem ser reutilizados em endpoints de upload. Imagens exibem comparação lado a lado, dimensões, tamanhos e redução (ou aumento) real. JPEG substitui transparência por branco; a compressão não promete atingir um tamanho exato.
+Resultados acima de 50 MB continuam disponíveis para download, mas não podem ser reutilizados em endpoints de upload. Imagens exibem comparação lado a lado, dimensões, tamanhos e redução (ou aumento) real. JPEG substitui transparência por branco.
+
+Em **Comprimir imagem**, escolha 500 KB, 1 MB, 2 MB ou informe um teto em KB (1 KB = 1000 bytes). O resultado JPEG respeita o teto ou a API retorna um erro. A comparação mostra as dimensões finais antes do download. A opção de reduzir as dimensões vem desmarcada.
+
+Em **Comprimir**, **Redimensionar** e **Converter**, selecione **Processar em lote (ZIP)** para aplicar as mesmas opções a até 5 imagens (50 MiB de entrada e 64 MiB de resultados no total). O processamento é sequencial. O ZIP numera os arquivos para preservar resultados de mesmo nome. Caso uma imagem falhe, a resposta identifica o arquivo com problema e o lote pode ser reenviado após a correção.
 
 Validação do pacote de compressão/extração em 31/10/2026: **49 testes passaram**. No navegador, foram verificados os fluxos imagem → compressão → redimensionamento e vídeo → extração MP3 → corte, além da preservação do arquivo ao trocar de ferramenta e do layout em tela pequena. O contêiner foi reconstruído e atualizado em `http://localhost:8080`.
 
