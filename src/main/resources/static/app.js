@@ -41,6 +41,39 @@ function clearResult() {
   resultUrl = null; comparisonUrl = null; resultFile = null;
 }
 function status(message = '', error = false) { $('status').textContent = message; $('status').classList.toggle('error', error); }
+const pageCatalogEntries = (() => {
+  try { return JSON.parse($('page-catalog')?.textContent || '[]'); } catch { return []; }
+})();
+const pageByPath = Object.fromEntries(pageCatalogEntries.map(entry => [entry.path, entry]));
+const pageByToolKey = {};
+for (const entry of pageCatalogEntries) {
+  if (!entry.homePage || !pageByToolKey[entry.toolKey]) pageByToolKey[entry.toolKey] = entry;
+}
+function applyPageMetadata(page) {
+  if (!page) return;
+  document.title = page.title;
+  const canonical = document.querySelector('link[rel="canonical"]');
+  if (canonical) canonical.href = page.canonicalUrl;
+  if ($('intro-eyebrow-text')) $('intro-eyebrow-text').textContent = page.eyebrow;
+  if ($('page-h1')) $('page-h1').textContent = page.h1;
+  if ($('page-lead')) $('page-lead').textContent = page.lead;
+  if ($('seo-guide') && page.seoHtml) $('seo-guide').innerHTML = page.seoHtml;
+}
+function setToolNavDisabled(disabled) {
+  document.querySelectorAll('[data-tool]').forEach(el => {
+    el.setAttribute('aria-disabled', String(disabled));
+    el.classList.toggle('is-disabled', disabled);
+  });
+}
+function navigateToTool(key, pushHistory = true) {
+  if (busy || !tools[key]) return;
+  const page = pageByToolKey[key];
+  if (pushHistory && page && window.location.pathname !== page.path) {
+    window.history.pushState({ tool: key }, '', page.path);
+  }
+  applyPageMetadata(page);
+  selectTool(key);
+}
 function selectTool(key) {
   if (busy) return;
   audioEditor?.destroy(); audioEditor = null;
@@ -57,7 +90,13 @@ function selectTool(key) {
   document.querySelectorAll('.tool-category').forEach(group => { group.open = group.dataset.category === tool.category; });
   $('tool-menu-label').textContent = 'Ferramentas · ' + tool.action;
   if(window.matchMedia('(max-width:640px)').matches) $('tool-menu').open = false;
-  document.querySelectorAll('[data-tool]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.tool === key)));
+  const onHome = window.location.pathname === '/';
+  document.querySelectorAll('[data-tool]').forEach(item => {
+    const active = item.dataset.tool === key;
+    item.setAttribute('aria-pressed', String(active));
+    if (!onHome && active) item.setAttribute('aria-current', 'page');
+    else item.removeAttribute('aria-current');
+  });
   $('tool-category').textContent = `FERRAMENTA DE ${tool.category}`;
   $('tool-title').textContent = tool.title; $('tool-description').textContent = tool.description;
   $('submit-label').textContent = tool.action; $('service-note').textContent = tool.note || '';
@@ -247,11 +286,31 @@ $('use-result').addEventListener('click', () => {
   const next = $('next-tool').value, selected = resultFile;
   if(!tools[next] || !acceptsFile(tools[next], selected)) return;
   sourceFiles[family(tools[next])] = selected;
-  clearResult(); selectTool(next);
+  clearResult(); navigateToTool(next, true);
   status('Resultado carregado como entrada. Confira as opções antes de processar.');
   $('tool-title').scrollIntoView({behavior:'smooth', block:'center'});
 });
-document.querySelectorAll('[data-tool]').forEach(button => button.addEventListener('click', () => selectTool(button.dataset.tool)));
+document.querySelectorAll('[data-tool]').forEach(link => link.addEventListener('click', event => {
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+  event.preventDefault();
+  navigateToTool(link.dataset.tool, true);
+}));
+$('seo-guide')?.addEventListener('click', event => {
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+  const anchor = event.target.closest('a[href]');
+  if (!anchor) return;
+  const targetPage = pageByPath[anchor.getAttribute('href')];
+  if (!targetPage) return;
+  event.preventDefault();
+  navigateToTool(targetPage.toolKey, true);
+  $('tool-title').scrollIntoView({behavior:'smooth', block:'center'});
+});
+window.addEventListener('popstate', () => {
+  const page = pageByPath[window.location.pathname] || pageByPath['/'];
+  if (!page) return;
+  applyPageMetadata(page);
+  selectTool(page.toolKey);
+});
 $('batch-mode').addEventListener('change', updateBatchMode);
 $('file').addEventListener('change', event => setUpload(event.target.files));
 for(const name of ['dragenter','dragover']) $('dropzone').addEventListener(name, event => { event.preventDefault(); if(!busy) $('dropzone').classList.add('dragging'); });
@@ -286,7 +345,7 @@ $('tool-form').addEventListener('submit', async event => {
   const original = current === 'youtube' ? null : file;
   audioEditor?.pause();
   clearResult(); busy = true; $('controls').disabled = true;
-  document.querySelectorAll('[data-tool]').forEach(button => button.disabled = true);
+  setToolNavDisabled(true);
   $('submit-label').textContent = 'Processando…'; status('Estamos preparando seu arquivo. Mantenha esta página aberta.');
   try {
     const response = await fetch(batch ? '/api/image/batch' : tool.endpoint, {method:'POST', body:data, headers:{Accept:'*/*'}});
@@ -307,9 +366,10 @@ $('tool-form').addEventListener('submit', async event => {
       status('Corte pronto! Download solicitado. Se não começar, clique em Baixar corte.');
     } else status('Pronto! Seu arquivo está disponível para download.');
   } catch(error) { status(error instanceof TypeError ? 'Não foi possível conectar ao servidor. Verifique sua conexão e tente novamente.' : error?.message || 'Não foi possível concluir a operação. Tente novamente.', true); }
-  finally { busy = false; $('controls').disabled = false; document.querySelectorAll('[data-tool]').forEach(button => button.disabled = false); $('submit-label').textContent = batch ? 'Processar e gerar ZIP' : tool.action; }
+  finally { busy = false; $('controls').disabled = false; setToolNavDisabled(false); $('submit-label').textContent = batch ? 'Processar e gerar ZIP' : tool.action; }
 });
-selectTool('resize');
+const initialTool = document.body.dataset.initialTool || 'resize';
+selectTool(tools[initialTool] ? initialTool : 'resize');
 
 const mobileMenu = window.matchMedia('(max-width:640px)');
 $('tool-menu').open = !mobileMenu.matches;

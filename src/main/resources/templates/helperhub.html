@@ -3,67 +3,39 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Ferramentas online gratuitas para comprimir, redimensionar e converter imagens, cortar e converter áudios, extrair áudio e baixar vídeos do YouTube.">
-  <meta name="robots" content="index, follow">
-  <link rel="canonical" href="https://helperhub.gmslab.cloud/">
+  <meta name="description" content="{{DESCRIPTION}}">
+  <meta name="robots" content="{{ROBOTS}}">
+  <link rel="canonical" href="{{CANONICAL_URL}}">
   <link rel="icon" href="/favicon.ico?v=2" sizes="any">
   <link rel="icon" type="image/png" href="/favicon-32.png?v=2" sizes="32x32">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2">
   <meta name="theme-color" content="#254d3b">
-  <title>HelperHub — Ferramentas online de imagem, áudio e vídeo</title>
+  <title>{{TITLE}}</title>
   <meta property="og:type" content="website">
   <meta property="og:locale" content="pt_BR">
-  <meta property="og:title" content="HelperHub — Ferramentas online de imagem, áudio e vídeo">
-  <meta property="og:description" content="Comprima, redimensione e converta imagens, corte e converta áudios, extraia áudio e baixe vídeos sem cadastro.">
-  <meta property="og:url" content="https://helperhub.gmslab.cloud/">
+  <meta property="og:title" content="{{OG_TITLE}}">
+  <meta property="og:description" content="{{OG_DESCRIPTION}}">
+  <meta property="og:url" content="{{CANONICAL_URL}}">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="HelperHub — Ferramentas online de imagem, áudio e vídeo">
-  <meta name="twitter:description" content="Comprima, redimensione e converta imagens, corte e converta áudios, extraia áudio e baixe vídeos sem cadastro.">
-  <script type="application/ld+json">
-  {
-    "@context": "https://schema.org",
-    "@type": "WebApplication",
-    "name": "HelperHub",
-    "url": "https://helperhub.gmslab.cloud/",
-    "applicationCategory": "MultimediaApplication",
-    "operatingSystem": "Web",
-    "inLanguage": "pt-BR",
-    "description": "Ferramentas online gratuitas para transformar imagens, áudios e vídeos sem cadastro."
-  }
-  </script>
-  <link rel="stylesheet" href="/styles.css?v=image-editor-2">
+  <meta name="twitter:title" content="{{OG_TITLE}}">
+  <meta name="twitter:description" content="{{OG_DESCRIPTION}}">
+  <script type="application/ld+json">{{JSON_LD}}</script>
+  <link rel="stylesheet" href="/styles.css?v=seo-1">
+  <script id="page-catalog" type="application/json">{{PAGE_CATALOG_JSON}}</script>
   <script src="/audio-editor.js?v=2600d1a7ede9" defer></script>
   <script src="/image-editor.js?v=image-editor-2" defer></script>
-  <script src="/app.js?v=image-editor-2" defer></script>
+  <script src="/app.js?v=seo-1" defer></script>
 </head>
-<body>
+<body data-initial-tool="{{INITIAL_TOOL}}">
   <header class="topbar"><a class="brand" href="/" aria-label="HelperHub início"><img class="brand-logo" src="/logo.png?v=2" width="38" height="38" alt="">helperhub<span class="beta">BETA</span></a></header>
   <main>
-    <section class="intro"><div><p class="eyebrow"><span class="dot"></span> MENOS ETAPAS. MAIS POSSIBILIDADES.</p><h1>Seus arquivos.<br>Do jeito que você precisa.</h1><p class="lead">Ajuste uma imagem, transforme um áudio ou baixe um vídeo.<br class="desktop-break"> As pequenas ferramentas que fazem o dia andar.</p></div><div class="intro-art" aria-hidden="true"><span class="art-label">SEU PEQUENO<br>ESTÚDIO DIGITAL</span><div class="art-shape">✳</div><span class="art-caption">criar · ajustar · continuar</span></div></section>
+    <section class="intro"><div><p class="eyebrow" id="intro-eyebrow"><span class="dot"></span> <span id="intro-eyebrow-text">{{INTRO_EYEBROW}}</span></p><h1 id="page-h1">{{H1}}</h1><p class="lead" id="page-lead">{{LEAD}}</p></div><div class="intro-art" aria-hidden="true"><span class="art-label">SEU PEQUENO<br>ESTÚDIO DIGITAL</span><div class="art-shape">✳</div><span class="art-caption">criar · ajustar · continuar</span></div></section>
     <section class="workspace" aria-label="Ferramentas de mídia">
       <aside class="toolbox">
         <details id="tool-menu" open>
           <summary id="tool-menu-label">Ferramentas · Redimensionar</summary>
           <nav aria-label="Operações">
-            <details class="tool-category" data-category="IMAGEM" name="tool-category" open>
-              <summary>Imagem</summary>
-              <button type="button" data-tool="compress" aria-pressed="false">Comprimir imagem</button>
-              <button type="button" data-tool="resize" aria-pressed="true">Redimensionar</button>
-              <button type="button" data-tool="crop" aria-pressed="false">Recortar imagem</button>
-              <button type="button" data-tool="rotate" aria-pressed="false">Girar e espelhar</button>
-              <button type="button" data-tool="imageConvert" aria-pressed="false">Converter imagem</button>
-              <button type="button" data-tool="removeBg" aria-pressed="false">Remover fundo</button>
-            </details>
-            <details class="tool-category" data-category="ÁUDIO" name="tool-category">
-              <summary>Áudio</summary>
-              <button type="button" data-tool="cut" aria-pressed="false">Cortar áudio</button>
-              <button type="button" data-tool="audioConvert" aria-pressed="false">Converter áudio</button>
-            </details>
-            <details class="tool-category" data-category="VÍDEO" name="tool-category">
-              <summary>Vídeo</summary>
-              <button type="button" data-tool="extract" aria-pressed="false">Extrair áudio</button>
-              <button type="button" data-tool="youtube" aria-pressed="false">Baixar do YouTube</button>
-            </details>
+{{TOOL_NAV}}
           </nav>
         </details>
         <p class="toolbox-note">Sem cadastro, sem complicação.</p>
@@ -83,6 +55,9 @@
       </div>
     </section>
     <section class="how" aria-label="Como funciona"><div><span>01</span><p><strong>Escolha o arquivo</strong><br>O ponto de partida da sua próxima ideia.</p></div><div><span>02</span><p><strong>Faça seus ajustes</strong><br>Só as opções de que você precisa.</p></div><div><span>03</span><p><strong>Baixe e siga em frente</strong><br>Seu resultado pronto para usar.</p></div></section>
+    <section class="seo-guide" id="seo-guide" aria-label="Detalhes da ferramenta">
+{{SEO_CONTENT}}
+    </section>
   </main><footer><a class="brand" href="/"><img class="brand-logo" src="/logo.png?v=2" width="30" height="30" alt="">helperhub</a><p>Pequenas ferramentas. Espaço para grandes ideias.</p><span>FEITO PARA FACILITAR</span></footer>
 </body>
 </html>
