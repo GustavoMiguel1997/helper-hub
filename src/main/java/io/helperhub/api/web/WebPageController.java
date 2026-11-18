@@ -28,6 +28,8 @@ public class WebPageController {
       value = {
         "/",
         "/comprimir-imagem",
+        "/comprimir-imagem-500kb",
+        "/converter-png-para-jpg",
         "/redimensionar-imagem",
         "/recortar-imagem",
         "/girar-espelhar-imagem",

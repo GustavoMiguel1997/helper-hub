@@ -47,7 +47,7 @@ const pageCatalogEntries = (() => {
 const pageByPath = Object.fromEntries(pageCatalogEntries.map(entry => [entry.path, entry]));
 const pageByToolKey = {};
 for (const entry of pageCatalogEntries) {
-  if (!entry.homePage || !pageByToolKey[entry.toolKey]) pageByToolKey[entry.toolKey] = entry;
+  if (!Object.keys(entry.presets || {}).length && (!entry.homePage || !pageByToolKey[entry.toolKey])) pageByToolKey[entry.toolKey] = entry;
 }
 function applyPageMetadata(page) {
   if (!page) return;
@@ -104,7 +104,14 @@ function navigateToPage(page, pushHistory = true) {
     document.querySelectorAll('.tool-category').forEach(group => {
       group.open = !window.matchMedia('(max-width:640px)').matches && group.dataset.category === 'IMAGEM';
     });
-  } else selectTool(page.toolKey);
+  } else {
+    selectTool(page.toolKey);
+    for(const [name, value] of Object.entries(page.presets || {})) {
+      const control = $(name);
+      if(control) control.value = value;
+    }
+    updateQuality();
+  }
 }
 function navigateToTool(key, pushHistory = true) {
   navigateToPage(pageByToolKey[key], pushHistory);
@@ -127,7 +134,7 @@ function selectTool(key) {
   document.querySelectorAll('[data-tool]').forEach(item => {
     const active = item.dataset.tool === key;
     item.setAttribute('aria-pressed', String(active));
-    if (!onHome && active) item.setAttribute('aria-current', 'page');
+    if (!onHome && item.getAttribute('href') === window.location.pathname) item.setAttribute('aria-current', 'page');
     else item.removeAttribute('aria-current');
   });
   $('tool-category').textContent = `FERRAMENTA DE ${tool.category}`;

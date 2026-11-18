@@ -83,7 +83,7 @@ public class ToolPageRenderer {
   }
 
   private static List<ToolPageDefinition> indexableTools(boolean removeBgEnabled) {
-    return ToolPageCatalog.tools().stream()
+    return ToolPageCatalog.pages().stream()
         .filter(tool -> removeBgEnabled || !"removeBg".equals(tool.toolKey()))
         .toList();
   }
@@ -116,7 +116,7 @@ public class ToolPageRenderer {
             .append("\" aria-pressed=\"")
             .append(active)
             .append("\"");
-        if (!currentPage.homePage() && active) {
+        if (!currentPage.homePage() && tool.path().equals(currentPage.path())) {
           nav.append(" aria-current=\"page\"");
         }
         nav.append(">")
@@ -188,7 +188,7 @@ public class ToolPageRenderer {
       html.append("<h3>Outras ferramentas do HelperHub</h3>\n");
       html.append("<ul>\n");
       for (ToolPageDefinition other : indexableTools(removeBgEnabled)) {
-        if (other.toolKey().equals(page.toolKey())) {
+        if (other.path().equals(page.path())) {
           continue;
         }
         html.append("<li><a href=\"").append(escape(other.path())).append("\">")
@@ -239,7 +239,7 @@ public class ToolPageRenderer {
   private String buildClientCatalogJson(boolean removeBgEnabled) {
     List<Map<String, Object>> entries = new ArrayList<>();
     entries.add(toClientEntry(ToolPageCatalog.home(), removeBgEnabled));
-    for (ToolPageDefinition tool : ToolPageCatalog.tools()) {
+    for (ToolPageDefinition tool : ToolPageCatalog.pages()) {
       entries.add(toClientEntry(tool, removeBgEnabled));
     }
     return toSafeScriptJson(entries);
@@ -249,6 +249,7 @@ public class ToolPageRenderer {
     Map<String, Object> entry = new LinkedHashMap<>();
     entry.put("path", page.path());
     entry.put("toolKey", page.toolKey());
+    entry.put("presets", ToolPageCatalog.presetValues(page.path()));
     entry.put("title", page.title());
     entry.put("description", page.metaDescription());
     entry.put("robots", page.homePage() || !"removeBg".equals(page.toolKey()) || removeBgEnabled

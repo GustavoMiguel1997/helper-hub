@@ -157,6 +157,10 @@ A marca foi criada com o ImageGen integrado. Prompt final usado:
 
 ### Páginas públicas por ferramenta
 
+As páginas /comprimir-imagem-500kb e /converter-png-para-jpg oferecem conteúdo próprio e abrem os presets correspondentes. A primeira seleciona o teto de 500.000 bytes, preservando a opção de autorizar redução das dimensões. A segunda seleciona JPEG com qualidade 85. Ambas entram no sitemap e nos links internos, com canonical próprio. O menu principal mantém os destinos gerais de cada ferramenta.
+
+O cabeçalho e o rodapé usam versões WebP do logo de 38 px (448 bytes) e 76 px (728 bytes) por srcset. O logo original e os favicons continuam disponíveis nos arquivos estáticos.
+
 A branch principal deste repositório é master. As páginas por ferramenta são renderizadas no servidor com título, descrição, canonical, conteúdo e dados estruturados próprios. O sitemap em /sitemap.xml é gerado a partir do catálogo em ToolPageCatalog. A interface atualiza a URL e os metadados ao navegar, preservando o arquivo selecionado quando compatível.
 
 O código no repositório e a versão em produção devem ser conferidos separadamente. Depois de publicar um commit, acompanhe o deploy da aplicação helperhub-app no Coolify até ficar saudável e confira a página inicial, uma rota direta como /comprimir-imagem e /sitemap.xml pelo domínio público.

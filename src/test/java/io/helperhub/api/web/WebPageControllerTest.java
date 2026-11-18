@@ -39,7 +39,7 @@ class WebPageControllerTest {
 
   @Test
   void dedicatedToolPagesReturnCustomSeoMetadataAndInitialTool() throws Exception {
-    for (ToolPageDefinition tool : ToolPageCatalog.tools()) {
+    for (ToolPageDefinition tool : ToolPageCatalog.pages()) {
       if ("removeBg".equals(tool.toolKey())) {
         continue;
       }
@@ -69,6 +69,8 @@ class WebPageControllerTest {
         .andExpect(content().contentTypeCompatibleWith("application/xml"))
         .andExpect(content().string(containsString("<loc>https://helperhub.gmslab.cloud/</loc>")))
         .andExpect(content().string(containsString("<loc>https://helperhub.gmslab.cloud/comprimir-imagem</loc>")))
+        .andExpect(content().string(containsString("<loc>https://helperhub.gmslab.cloud/comprimir-imagem-500kb</loc>")))
+        .andExpect(content().string(containsString("<loc>https://helperhub.gmslab.cloud/converter-png-para-jpg</loc>")))
         .andExpect(content().string(containsString("<loc>https://helperhub.gmslab.cloud/extrair-audio-video</loc>")))
         .andExpect(content().string(not(containsString("/remover-fundo-imagem"))));
   }

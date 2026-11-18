@@ -318,6 +318,46 @@ public final class ToolPageCatalog {
       )
   );
 
+  private static final List<ToolPageDefinition> PRESETS = List.of(
+      new ToolPageDefinition(
+          "/comprimir-imagem-500kb", "compress", "IMAGEM", "Comprimir imagem para 500 KB",
+          "Comprimir imagem para até 500 KB online — HelperHub",
+          "Reduza JPG, PNG ou WebP para um JPEG de até 500 KB. O limite já vem selecionado, com prévia e opção de reduzir as dimensões.",
+          "IMAGEM · ATÉ 500 KB", "Comprimir imagem para até 500 KB",
+          "Envie sua imagem e gere um JPEG de até 500.000 bytes. Confira o resultado antes de baixar.",
+          "Como reduzir uma imagem para 500 KB",
+          List.of(
+              "O limite de 500 KB já está selecionado. Envie JPG, PNG ou WebP de até 50 MB e inicie a compressão. O resultado é um JPEG, com áreas transparentes preenchidas de branco.",
+              "Primeiro ajustamos a qualidade mantendo as dimensões. Quando isso for insuficiente, você pode permitir reduzir as dimensões e tentar novamente. A comparação mostra o peso e as dimensões finais.",
+              "Neste preset, 500 KB correspondem a 500.000 bytes. É um teto para o arquivo final. Você também pode ativar o lote para aplicar o mesmo limite a cada uma de até cinco imagens."
+          ),
+          List.of(
+              new FaqItem("A imagem fica exatamente com 500 KB?",
+                  "O JPEG final fica com até 500.000 bytes. Ele pode ficar menor, dependendo da imagem."),
+              new FaqItem("O que faço se a imagem não chegar ao limite?",
+                  "Ative Permitir reduzir as dimensões para atingir o tamanho-alvo e processe novamente. A redução das dimensões começa após sua autorização."),
+              new FaqItem("A transparência do PNG é mantida?",
+                  "A saída deste preset é JPEG. As áreas transparentes recebem fundo branco.")
+          ), false),
+      new ToolPageDefinition(
+          "/converter-png-para-jpg", "imageConvert", "IMAGEM", "Converter PNG para JPG",
+          "Converter PNG para JPG online grátis — HelperHub",
+          "Transforme PNG em JPG com saída JPEG já selecionada. Ajuste a qualidade, compare os arquivos e converta até cinco imagens em lote.",
+          "IMAGEM · PNG PARA JPG", "Converter PNG para JPG",
+          "Envie seu PNG, ajuste a qualidade do JPEG e confira a comparação antes de baixar.",
+          "Como transformar PNG em JPG",
+          List.of(
+              "A saída JPEG já vem selecionada com qualidade 85. Envie o PNG e clique em Converter imagem. JPG e JPEG identificam o mesmo formato de imagem.",
+              "A conversão mantém as dimensões e preenche áreas transparentes com branco. Fotos podem ocupar menos espaço em JPEG, enquanto textos e gráficos podem apresentar perda de nitidez. A comparação mostra os tamanhos reais.",
+              "Para chegar a um limite de upload, use Comprimir imagem para 500 KB. Se precisar preservar a transparência, escolha PNG ou WebP na ferramenta de conversão. O lote permite converter até cinco arquivos com as mesmas opções."
+          ),
+          List.of(
+              new FaqItem("JPG e JPEG são formatos diferentes?", "São duas extensões usadas para o mesmo formato. O arquivo gerado aqui usa a extensão .jpg."),
+              new FaqItem("O fundo transparente fica de que cor?", "As áreas transparentes recebem fundo branco na saída JPEG."),
+              new FaqItem("Posso ajustar a qualidade antes de converter?", "Sim. O preset começa em qualidade 85, e você pode escolher um valor de 1 a 100.")
+          ), false)
+  );
+
   private static final Map<String, ToolPageDefinition> BY_PATH = buildByPath();
   private static final Map<String, ToolPageDefinition> BY_TOOL_KEY = TOOLS.stream()
       .collect(Collectors.toUnmodifiableMap(ToolPageDefinition::toolKey, Function.identity()));
@@ -325,7 +365,7 @@ public final class ToolPageCatalog {
   private ToolPageCatalog() {}
 
   private static Map<String, ToolPageDefinition> buildByPath() {
-    Map<String, ToolPageDefinition> map = TOOLS.stream()
+    Map<String, ToolPageDefinition> map = pages().stream()
         .collect(Collectors.toMap(ToolPageDefinition::path, Function.identity()));
     map.put(HOME.path(), HOME);
     return Map.copyOf(map);
@@ -337,6 +377,18 @@ public final class ToolPageCatalog {
 
   public static List<ToolPageDefinition> tools() {
     return TOOLS;
+  }
+
+  public static List<ToolPageDefinition> pages() {
+    return java.util.stream.Stream.concat(TOOLS.stream(), PRESETS.stream()).toList();
+  }
+
+  public static Map<String, String> presetValues(String path) {
+    return switch (path) {
+      case "/comprimir-imagem-500kb" -> Map.of("targetBytes", "500000");
+      case "/converter-png-para-jpg" -> Map.of("outputFormat", "JPEG", "jpegQuality", "85");
+      default -> Map.of();
+    };
   }
 
   public static Optional<ToolPageDefinition> findByPath(String path) {
