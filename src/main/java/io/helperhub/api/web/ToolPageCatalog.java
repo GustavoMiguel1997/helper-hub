@@ -318,6 +318,49 @@ public final class ToolPageCatalog {
       )
   );
 
+  private static final List<ToolPageDefinition> AUDIO_TOOLS = List.of(
+      new ToolPageDefinition(
+          "/juntar-audios", "audioJoin", "ÁUDIO", "Juntar áudios",
+          "Juntar áudios online com volume e fades — HelperHub",
+          "Junte de dois a cinco áudios, organize a ordem e ouça a sequência com ajustes de volume e fades antes de exportar.",
+          "FERRAMENTA DE ÁUDIO · JUNÇÃO", "Juntar áudios online",
+          "Adicione os arquivos, organize a sequência e prepare uma faixa única em MP3, WAV, AAC, OGG, FLAC ou OPUS.",
+          "Como juntar arquivos de áudio",
+          List.of(
+              "Adicione de dois a cinco arquivos, com até 50 MB no total. Arraste os itens para definir a ordem ou use os botões de mover para cima e para baixo.",
+              "Ouça a sequência com os ajustes de volume e fades antes de gerar o arquivo. Os fades são aplicados ao início e ao fim da sequência completa. A prévia depende dos formatos aceitos pelo navegador.",
+              "A saída é preparada em estéreo a 48 kHz, com duração total de até 30 minutos. Depois do processamento, o player permite ouvir o resultado antes de baixar."
+          ),
+          List.of(
+              new FaqItem("Posso juntar arquivos de formatos diferentes?",
+                  "Sim. Os arquivos são normalizados para uma faixa estéreo e exportados no formato escolhido."),
+              new FaqItem("Os fades são aplicados entre todos os arquivos?",
+                  "O fade de entrada fica no início da sequência e o de saída no fim. Os arquivos são unidos na ordem escolhida."),
+              new FaqItem("Como altero a ordem pelo celular?",
+                  "Use as setas ao lado de cada arquivo. Você também pode remover um item e adicionar outro.")
+          ), false),
+      new ToolPageDefinition(
+          "/ajustar-volume-audio", "audioEffects", "ÁUDIO", "Volume e fades",
+          "Ajustar volume de áudio e aplicar fades online — HelperHub",
+          "Aumente ou diminua o volume de um áudio e aplique fades de entrada e saída, com prévia e exportação em vários formatos.",
+          "FERRAMENTA DE ÁUDIO · VOLUME E FADES", "Ajustar volume e fades de áudio",
+          "Escolha um volume de 0 a 200% e suavize o início e o fim com fades de até 30 segundos.",
+          "Como aplicar volume e fades",
+          List.of(
+              "Envie um arquivo de áudio ou vídeo com áudio de até 50 MB e 30 minutos. O volume começa em 100%, com os fades desativados.",
+              "Use Ouvir com ajustes para conferir a alteração no navegador. Ajuste a duração do fade de entrada e de saída em segundos. Cada fade deve caber na duração do áudio.",
+              "Gere o arquivo no formato escolhido e ouça o resultado antes de baixar. A saída usa estéreo a 48 kHz. Volumes altos podem causar distorção."
+          ),
+          List.of(
+              new FaqItem("Qual é o volume original?",
+                  "100% mantém a amplitude original. 50% reduz a amplitude pela metade e 200% a duplica."),
+              new FaqItem("O que é fade de entrada?",
+                  "É um aumento gradual do volume, começando em silêncio e chegando ao volume escolhido."),
+              new FaqItem("Posso aplicar apenas o fade de saída?",
+                  "Sim. Deixe o fade de entrada em zero e escolha a duração do fade de saída.")
+          ), false)
+  );
+
   private static final List<ToolPageDefinition> PRESETS = List.of(
       new ToolPageDefinition(
           "/comprimir-imagem-500kb", "compress", "IMAGEM", "Comprimir imagem para 500 KB",
@@ -359,7 +402,7 @@ public final class ToolPageCatalog {
   );
 
   private static final Map<String, ToolPageDefinition> BY_PATH = buildByPath();
-  private static final Map<String, ToolPageDefinition> BY_TOOL_KEY = TOOLS.stream()
+  private static final Map<String, ToolPageDefinition> BY_TOOL_KEY = tools().stream()
       .collect(Collectors.toUnmodifiableMap(ToolPageDefinition::toolKey, Function.identity()));
 
   private ToolPageCatalog() {}
@@ -376,11 +419,11 @@ public final class ToolPageCatalog {
   }
 
   public static List<ToolPageDefinition> tools() {
-    return TOOLS;
+    return java.util.stream.Stream.concat(TOOLS.stream(), AUDIO_TOOLS.stream()).toList();
   }
 
   public static List<ToolPageDefinition> pages() {
-    return java.util.stream.Stream.concat(TOOLS.stream(), PRESETS.stream()).toList();
+    return java.util.stream.Stream.concat(tools().stream(), PRESETS.stream()).toList();
   }
 
   public static Map<String, String> presetValues(String path) {

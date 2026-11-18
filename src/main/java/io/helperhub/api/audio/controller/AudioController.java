@@ -3,6 +3,7 @@ package io.helperhub.api.audio.controller;
 import io.helperhub.api.audio.dto.AudioConvertRequest;
 import io.helperhub.api.audio.dto.AudioCutRequest;
 import io.helperhub.api.audio.dto.AudioFileOutputDto;
+import io.helperhub.api.audio.dto.AudioMixRequest;
 import io.helperhub.api.audio.service.AudioService;
 import io.helperhub.api.common.support.DeletingFileStreamResourceFactory;
 import io.swagger.v3.oas.annotations.Operation;
@@ -65,6 +66,20 @@ public class AudioController {
   @PostMapping(value = "/extract", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<Resource> extractAudio(@Valid @ModelAttribute AudioConvertRequest request) {
     return attachmentResponse(audioService.extractAudio(request));
+  }
+
+  @Operation(summary = "Juntar áudios", description = "Junta de 2 a 5 arquivos na ordem enviada. "
+      + "Aceita volumePercent (0–200), fadeInMs e fadeOutMs (0–30000).")
+  @PostMapping(value = "/join", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<Resource> joinAudio(@Valid @ModelAttribute AudioMixRequest request) {
+    return attachmentResponse(audioService.mixAudio(request, true));
+  }
+
+  @Operation(summary = "Ajustar volume e fades", description = "Processa um arquivo com volumePercent (0–200), "
+      + "fadeInMs e fadeOutMs (0–30000), no formato escolhido.")
+  @PostMapping(value = "/effects", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<Resource> audioEffects(@Valid @ModelAttribute AudioMixRequest request) {
+    return attachmentResponse(audioService.mixAudio(request, false));
   }
 
   private static ResponseEntity<Resource> attachmentResponse(AudioFileOutputDto result) {

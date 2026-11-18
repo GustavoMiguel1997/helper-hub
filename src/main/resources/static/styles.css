@@ -115,3 +115,14 @@ html{scrollbar-gutter:stable}
   body[data-initial-tool=explore] .toolbox nav{padding-bottom:0}
   body[data-initial-tool=explore] .toolbox nav:has(.tool-category[open]){padding-bottom:164px}
 }
+
+.audio-mixer{padding:18px;background:#f4f6f0;border:1px solid var(--line);border-radius:10px}
+.audio-mixer audio{display:block;width:100%;margin:14px 0}
+#source-preview .audio-file-list{list-style:none;padding:0;margin:0 0 14px}
+.audio-file-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.audio-file-list li[draggable=true]{cursor:grab}
+.audio-file-name{font-size:12px;line-height:1.6;overflow-wrap:anywhere;min-width:0}
+.audio-file-buttons{display:flex;gap:6px;flex-shrink:0}
+.audio-file-buttons .secondary{padding:9px;min-height:38px}
+.audio-mixer .audio-actions{margin-top:10px}
+@media(max-width:640px){.audio-mixer{padding:12px}.audio-file-list li{align-items:stretch;flex-direction:column}.audio-file-buttons{justify-content:flex-end}.audio-file-buttons .secondary{min-height:42px}}

@@ -13,6 +13,8 @@ import io.helperhub.api.audio.domain.AudioOutputFormat;
 import io.helperhub.api.audio.dto.AudioConvertRequest;
 import io.helperhub.api.audio.dto.AudioCutRequest;
 import io.helperhub.api.audio.dto.AudioFileOutputDto;
+import io.helperhub.api.audio.dto.AudioMixRequest;
+import java.util.ArrayList;
 import io.helperhub.api.audio.exception.AudioProcessingException;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -79,6 +81,87 @@ public class AudioService {
 
   public AudioFileOutputDto extractAudio(AudioConvertRequest request) {
     return convertAudio(request, true);
+  }
+
+  public AudioFileOutputDto mixAudio(AudioMixRequest request, boolean join) {
+    int count = request.getFiles().size();
+    if ((join && count < 2) || (!join && count != 1)) {
+      throw new AudioProcessingException("AUDIO_FILE_COUNT",
+          join ? "Selecione de 2 a 5 arquivos para juntar." : "Selecione um arquivo para ajustar.");
+    }
+    var inputs = new ArrayList<Path>();
+    var monoInputs = new ArrayList<Boolean>();
+    Path output = null;
+    boolean delivered = false;
+    try {
+      long durationMs = 0;
+      for (MultipartFile file : request.getFiles()) {
+        Path input = Files.createTempFile("helperhub-audio-mix-in-", ".bin");
+        inputs.add(input);
+        file.transferTo(input);
+        var probe = runFfprobe(input);
+        durationMs += audioDurationMillis(probe);
+        monoInputs.add(probe.getStreams().stream()
+            .filter(stream -> StreamType.AUDIO.equals(stream.getCodecType()))
+            .findFirst().map(stream -> Integer.valueOf(1).equals(stream.getChannels())).orElse(false));
+        if (durationMs > audioUsageProperties.getMaxEditDurationMs()) {
+          throw new AudioProcessingException("AUDIO_DURATION_LIMIT",
+              "A duração total excede o limite de edição de áudio do servidor.");
+        }
+      }
+      if (request.getFadeInMs() > durationMs || request.getFadeOutMs() > durationMs) {
+        throw new AudioProcessingException("AUDIO_FADE_DURATION",
+            "Cada fade deve ser menor ou igual à duração total do áudio.");
+      }
+      AudioOutputFormat format = request.getTargetFormat();
+      output = Files.createTempFile("helperhub-audio-mix-out-", "." + format.getFileExtension());
+      var ffmpeg = FFmpeg.atPath();
+      var filters = new StringBuilder();
+      var labels = new StringBuilder();
+      for (int index = 0; index < inputs.size(); index++) {
+        ffmpeg.addInput(UrlInput.fromPath(inputs.get(index)).addArguments("-protocol_whitelist", "file,pipe"));
+        filters.append("[").append(index).append(":a:0]aresample=48000,");
+        if (monoInputs.get(index)) {
+          filters.append("pan=stereo|c0=c0|c1=c0,");
+        }
+        filters.append("aformat=sample_fmts=fltp:channel_layouts=stereo,asetpts=PTS-STARTPTS[a")
+            .append(index).append("];");
+        labels.append("[a").append(index).append("]");
+      }
+      filters.append(labels).append("concat=n=").append(count).append(":v=0:a=1,volume=")
+          .append(request.getVolumePercent() / 100.0);
+      if (request.getFadeInMs() > 0) {
+        filters.append(",afade=t=in:st=0:d=").append(request.getFadeInMs() / 1000.0);
+      }
+      if (request.getFadeOutMs() > 0) {
+        filters.append(",afade=t=out:st=").append((durationMs - request.getFadeOutMs()) / 1000.0)
+            .append(":d=").append(request.getFadeOutMs() / 1000.0);
+      }
+      filters.append("[mixed]");
+      var destination = UrlOutput.toPath(output).addArguments("-map", "[mixed]")
+          .setCodec(StreamType.AUDIO, format.getFfmpegAudioCodec())
+          .addArguments("-ar", "48000").addArguments("-ac", "2").addArguments("-threads", "1");
+      if (format.isWavMuxer()) {
+        destination.setFormat("wav");
+      }
+      awaitFfmpeg(ffmpeg.addArguments("-filter_complex_threads", "1").addArguments("-filter_complex", filters.toString()).addOutput(destination)
+          .setOverwriteOutput(true).setLogLevel(LogLevel.ERROR).setProgressListener(progress -> {})
+          .executeAsync());
+      var result = new AudioFileOutputDto(output, format.getMediaType(),
+          (join ? "audios-unidos" : stemWithoutExtension(request.getFiles().getFirst().getOriginalFilename()) + "-ajustado")
+              + "." + format.getFileExtension());
+      delivered = true;
+      return result;
+    } catch (AudioProcessingException exception) {
+      throw exception;
+    } catch (Exception exception) {
+      throw new AudioProcessingException("AUDIO_PROCESSING_FAILED", "Não foi possível preparar o áudio.", exception);
+    } finally {
+      inputs.forEach(AudioService::deleteQuietly);
+      if (!delivered) {
+        deleteQuietly(output);
+      }
+    }
   }
 
   private AudioFileOutputDto convertAudio(AudioConvertRequest request, boolean requireVideo) {
@@ -153,15 +236,23 @@ public class AudioService {
   }
 
   private long probeAudioDurationMillis(Path inputPath) {
-    FFprobeResult result = runFfprobe(inputPath);
+    return audioDurationMillis(runFfprobe(inputPath));
+  }
+
+  private static long audioDurationMillis(FFprobeResult result) {
     if (!containsAudioStream(result)) {
       throw new AudioProcessingException(
           "NO_AUDIO_STREAM",
           "O arquivo não contém faixa de áudio detectável.");
     }
     Format format = result.getFormat();
-    Float durationSeconds = Objects.nonNull(format) ? format.getDuration() : null;
-    if (Objects.isNull(durationSeconds) || durationSeconds <= 0f) {
+    Float durationSeconds = result.getStreams().stream()
+        .filter(stream -> StreamType.AUDIO.equals(stream.getCodecType()))
+        .findFirst().map(com.github.kokorin.jaffree.ffprobe.Stream::getDuration).orElse(null);
+    if (durationSeconds == null && format != null) {
+      durationSeconds = format.getDuration();
+    }
+    if (Objects.isNull(durationSeconds) || !Float.isFinite(durationSeconds) || durationSeconds <= 0f) {
       throw new AudioProcessingException(
           "DURATION_UNKNOWN",
           "Não foi possível determinar a duração deste arquivo.");

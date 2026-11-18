@@ -1,6 +1,6 @@
 # HelperHub
 
-Aplicação web para comprimir, redimensionar e converter imagens, remover fundos, cortar, converter e extrair áudio de vídeos e baixar vídeos do YouTube. Interface em português e API REST no mesmo processo Spring Boot, sem banco ou cadastro.
+Aplicação web para comprimir, redimensionar e converter imagens, remover fundos, cortar e juntar áudios, ajustar volume e fades, converter e extrair áudio de vídeos e baixar vídeos do YouTube. Interface em português e API REST no mesmo processo Spring Boot, sem banco ou cadastro.
 
 ## Executar no Windows
 
@@ -60,6 +60,8 @@ Todas as operações são `POST`. Envie campos como `multipart/form-data`; o dow
 | `/api/audio/extract` | `file` de vídeo com áudio, `targetFormat=MP3/WAV/AAC/OGG/FLAC/OPUS`. Extrai a primeira faixa de áudio. |
 | `/api/audio/cut` | `file`, `startMs`, `endMs` (milissegundos) |
 | `/api/audio/convert` | `file`, `targetFormat=MP3/WAV/AAC/OGG/FLAC/OPUS` (AAC gera M4A) |
+| `/api/audio/join` | 2 a 5 campos `files`, na ordem desejada. Opcionais `targetFormat` (MP3 por padrão), `volumePercent=0..200` (100), `fadeInMs` e `fadeOutMs=0..30000` (0). |
+| `/api/audio/effects` | Um campo `files`, com as mesmas opções de volume, fades e formato da junção. |
 | `/api/video/youtube-download` | `url` HTTPS de `youtube.com/watch`, `youtube.com/shorts` ou `youtu.be`; opcional `outputFormat=MP4/WEBM` |
 
 ```powershell
@@ -134,6 +136,12 @@ Em **Comprimir imagem**, escolha 500 KB, 1 MB, 2 MB ou informe um teto em KB (1 
 Em **Comprimir**, **Redimensionar** e **Converter**, selecione **Processar em lote (ZIP)** para aplicar as mesmas opções a até 5 imagens (50 MiB de entrada e 64 MiB de resultados no total). O processamento é sequencial. O ZIP numera os arquivos para preservar resultados de mesmo nome. Caso uma imagem falhe, a resposta identifica o arquivo com problema e o lote pode ser reenviado após a correção.
 
 Validação do pacote de compressão/extração em 31/10/2026: **49 testes passaram**. No navegador, foram verificados os fluxos imagem → compressão → redimensionamento e vídeo → extração MP3 → corte, além da preservação do arquivo ao trocar de ferramenta e do layout em tela pequena. O contêiner foi reconstruído e atualizado em `http://localhost:8080`.
+
+### Junção, volume e fades
+
+As páginas **Juntar áudios** (/juntar-audios) e **Volume e fades** (/ajustar-volume-audio) permitem ouvir ajustes localmente, com Web Audio e reprodução sequencial. A junção aceita de 2 a 5 arquivos, com até 50 MiB no total. Arraste os itens ou use as setas para definir a ordem. Os fades são aplicados ao início e ao fim da sequência completa. A prévia depende dos formatos aceitos pelo navegador. Após gerar o resultado, o player permite conferir o arquivo exportado antes do download.
+
+O processamento normaliza os arquivos para estéreo a 48 kHz, mantém a amplitude dos arquivos mono ao duplicar o canal e exporta MP3, WAV, AAC/M4A, OGG, FLAC ou OPUS. O limite de edição é de 30 minutos no total, configurável por helperhub.audio.max-edit-duration-ms. Cada fade pode ter até 30 segundos e deve caber na duração do áudio. O timeout do FFmpeg segue helperhub.audio.max-processing-seconds. Entradas temporárias são removidas em sucesso ou falha, e a saída é removida ao fechar a resposta.
 
 ### Corte de áudio interativo
 

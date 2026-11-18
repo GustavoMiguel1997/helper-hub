@@ -37,6 +37,8 @@ public class WebPageController {
         "/remover-fundo-imagem",
         "/cortar-audio",
         "/converter-audio",
+        "/juntar-audios",
+        "/ajustar-volume-audio",
         "/extrair-audio-video",
         "/baixar-video-youtube"
       },

@@ -17,6 +17,9 @@ public class AudioUsageProperties {
 
   private boolean rateLimitEnabled = true;
   private long maxProcessingSeconds = 120;
+  private long maxEditDurationMs = 30L * 60 * 1000;
+  public long getMaxEditDurationMs() { return maxEditDurationMs; }
+  public void setMaxEditDurationMs(long value) { maxEditDurationMs = Math.max(1, value); }
   public long getMaxProcessingSeconds() { return maxProcessingSeconds; }
   public void setMaxProcessingSeconds(long value) { maxProcessingSeconds = Math.max(1, value); }
 

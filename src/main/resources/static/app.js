@@ -1,4 +1,13 @@
+const audioMixFields = [
+  ['volumePercent','Volume (%)','range','100'],
+  ['fadeIn','Fade de entrada (segundos)','number','0'],
+  ['fadeOut','Fade de saída (segundos)','number','0'],
+  ['targetFormat','Formato de saída','select','MP3,WAV,AAC,OGG,FLAC,OPUS']
+];
 const tools = {
+  audioJoin: {category:'ÁUDIO', title:'Seus áudios, em uma sequência.', description:'Adicione arquivos, escolha a ordem e ouça a sequência antes de gerar o resultado.', endpoint:'/api/audio/join', action:'Juntar áudios', type:'audio', fields:audioMixFields, note:'De 2 a 5 arquivos, até 50 MB no total e 30 minutos de áudio. Volume e fades valem para a sequência completa.'},
+  audioEffects: {category:'ÁUDIO', title:'O volume e a entrada certos.', description:'Ajuste o volume e suavize o início e o fim. Ouça os ajustes antes de preparar o arquivo.', endpoint:'/api/audio/effects', action:'Aplicar volume e fades', type:'audio', fields:audioMixFields, note:'Até 50 MB e 30 minutos. Cada fade pode ter até 30 segundos e deve caber na duração do áudio. Volumes altos podem distorcer.'},
+
   crop: {category:'IMAGEM', title:'Enquadre o que importa.', description:'Arraste sobre a imagem para selecionar um recorte. Ajuste a posição pelos campos em pixels.', endpoint:'/api/image/edit', action:'Recortar imagem', type:'image', fields:[['x','Posição horizontal (px)','number','0'],['y','Posição vertical (px)','number','0'],['width','Largura do recorte (px)','number',''],['height','Altura do recorte (px)','number',''],['outputFormat','Formato de saída','select','PNG,JPEG,WEBP']]},
   rotate: {category:'IMAGEM', title:'Encontre o ângulo certo.', description:'Gire ou espelhe sua imagem e confira a prévia antes de baixar.', endpoint:'/api/image/edit', action:'Girar e espelhar', type:'image', fields:[['rotation','Giro horário','select','0,90,180,270'],['flipHorizontal','Espelhar horizontalmente','checkbox','true'],['flipVertical','Espelhar verticalmente','checkbox','true'],['outputFormat','Formato de saída','select','PNG,JPEG,WEBP']]},
 
@@ -21,6 +30,8 @@ const targetLabels = {manual:'Ajustar qualidade', 500000:'500 KB', 1000000:'1 MB
 const sourceFiles = {image:null, media:null};
 let batchFiles = [];
 let audioEditor = null;
+let audioMixer = null;
+let mixFiles = [];
 let imageEditor = null;
 let current = 'resize', file = null, sourceUrl = null, resultUrl = null, comparisonUrl = null, resultFile = null, busy = false;
 function extensions(tool) { return tool.type === 'image' ? imageExtensions : tool.type === 'videoUpload' ? videoExtensions : audioExtensions; }
@@ -93,6 +104,7 @@ function navigateToPage(page, pushHistory = true) {
   });
   if(page.homePage) {
     audioEditor?.destroy(); audioEditor = null;
+    audioMixer?.destroy(); audioMixer = null;
     imageEditor?.destroy(); imageEditor = null;
     if(sourceUrl) URL.revokeObjectURL(sourceUrl);
     sourceUrl = null;
@@ -121,13 +133,15 @@ function navigateToTool(key, pushHistory = true) {
 function selectTool(key) {
   if (busy) return;
   audioEditor?.destroy(); audioEditor = null;
+  audioMixer?.destroy(); audioMixer = null;
   imageEditor?.destroy(); imageEditor = null;
   clearResult();
   current = key; file = null; $('file').value = ''; status();
   batchFiles = [];
+  mixFiles = [];
   $('batch-mode').checked = false;
   $('batch-option').hidden = !batchOperations[key];
-  $('file').multiple = false;
+  $('file').multiple = key === 'audioJoin';
   if(sourceUrl) URL.revokeObjectURL(sourceUrl); sourceUrl = null;
   $('source-preview').replaceChildren(); $('source-preview').hidden = true;
   const tool = tools[key];
@@ -149,6 +163,11 @@ function selectTool(key) {
   $('file-title').textContent = `Solte ${tool.type === 'image' ? 'sua imagem' : tool.type === 'videoUpload' ? 'seu vídeo' : 'seu áudio'} aqui`;
   $('file-hint').textContent = 'ou clique para escolher um arquivo';
   $('file-types').textContent = tool.type === 'image' ? 'JPG, PNG ou WebP · até 50 MB' : tool.type === 'videoUpload' ? 'MP4, WebM, MOV e outros vídeos · até 50 MB' : 'Áudio ou vídeo com faixa de áudio · até 50 MB';
+  if(key === 'audioJoin') {
+    $('file-title').textContent = 'Adicione seus áudios';
+    $('file-hint').textContent = 'ou clique para adicionar arquivos';
+    $('file-types').textContent = 'De 2 a 5 arquivos · até 50 MB no total';
+  }
   $('privacy-note').textContent = key === 'removeBg' ? 'Imagem enviada ao remove.bg para processamento.' : 'Arquivos processados no servidor e descartados após o envio.';
   document.querySelector('.editor-foot>span:first-child').textContent = tool.type === 'image' ? '↗ Proporções preservadas' : '↓ Download do resultado';
   $('options').replaceChildren();
@@ -158,6 +177,9 @@ function selectTool(key) {
     const control = document.createElement(type === 'select' ? 'select' : 'input'); control.id = name; control.name = name;
     if(type === 'select') for(const item of value.split(',')) { const option = document.createElement('option'); option.value = item; option.textContent = name === 'targetBytes' ? targetLabels[item] : item === 'AUTO' ? 'Automático' : item === 'AAC' ? 'AAC / M4A' : item; control.append(option); }
     else { control.type = type; control.value = value; control.min = name === 'start' ? '0' : '1'; control.step = ['start','end'].includes(name) ? '0.001' : '1'; if(['start','end'].includes(name)) {control.min='0'; control.required = true;} else control.max = name === 'jpegQuality' ? '100' : '8192'; }
+    if(['fadeIn','fadeOut'].includes(name)) {
+      control.min = '0'; control.max = '30'; control.step = '0.1'; control.required = true;
+    }
     if(['x','y','width','height'].includes(name)) {
       control.min = ['x','y'].includes(name) ? '0' : '1';
       control.max = '25000000';
@@ -169,7 +191,7 @@ function selectTool(key) {
       wrapper.append(caption);
     } else wrapper.append(caption,control);
     if(type === 'range') {
-      control.max = '100'; control.min = '1';
+      control.max = name === 'volumePercent' ? '200' : '100'; control.min = name === 'volumePercent' ? '0' : '1';
       const valueLabel = document.createElement('output'); valueLabel.htmlFor = name; valueLabel.textContent = control.value;
       control.addEventListener('input', () => { valueLabel.textContent = control.value; });
       wrapper.classList.add('quality-control'); wrapper.append(valueLabel);
@@ -184,7 +206,7 @@ function selectTool(key) {
   }
   updateQuality();
   const saved = sourceFiles[family(tool)];
-  if(key !== 'youtube' && acceptsFile(tool, saved)) {
+  if(key !== 'youtube' && key !== 'audioJoin' && acceptsFile(tool, saved)) {
     renderSource(saved);
     status('Arquivo mantido. Ajuste as opções e continue quando quiser.');
   }
@@ -225,6 +247,7 @@ function updateBatchMode() {
 }
 function setUpload(files) {
   if(busy || files.length === 0) return;
+  if(current === 'audioJoin') { setJoinFiles(Array.from(files)); return; }
   if(!$('batch-mode').checked) {
     if(files.length === 1) setFile(files[0]);
     else status('Selecione um arquivo ou ative Processar em lote.', true);
@@ -252,13 +275,46 @@ function setUpload(files) {
   clearResult();
   status();
 }
+function updateJoinLabel() {
+  $('file').required = mixFiles.length === 0;
+  $('file-title').textContent = mixFiles.length ? mixFiles.length + ' arquivos na sequência' : 'Adicione seus áudios';
+  $('file-hint').textContent = 'Clique para adicionar arquivos (até 5)';
+}
+function renderAudioMixer(files, reorder) {
+  audioMixer?.destroy();
+  $('source-preview').replaceChildren();
+  $('source-preview').hidden = false;
+  audioMixer = createAudioMixer($('source-preview'), files, reorder ? ordered => {
+    mixFiles = ordered;
+    updateJoinLabel();
+    clearResult();
+    status();
+  } : null);
+}
+function setJoinFiles(selected) {
+  const combined = [...mixFiles,...selected];
+  if(combined.length > 5 || combined.some(item => !acceptsFile(tools.audioJoin,item))
+      || combined.reduce((size,item) => size+item.size,0) > uploadLimit) {
+    $('file').value = '';
+    status('Adicione até 5 arquivos não vazios de formatos aceitos, com até 50 MB no total.',true);
+    return;
+  }
+  mixFiles = combined;
+  $('file').value = '';
+  clearResult(); status();
+  updateJoinLabel();
+  renderAudioMixer(mixFiles,true);
+}
 function renderSource(selected) {
   audioEditor?.destroy(); audioEditor = null;
+  audioMixer?.destroy(); audioMixer = null;
   imageEditor?.destroy(); imageEditor = null;
   file = selected; $('file').required = false;
   $('file-title').textContent = selected.name;
   $('file-hint').textContent = `${formatSize(selected.size)} · clique para trocar`;
   if(sourceUrl) URL.revokeObjectURL(sourceUrl);
+  sourceUrl = null;
+  if(current === 'audioEffects') { renderAudioMixer([selected],false); return; }
   sourceUrl = URL.createObjectURL(selected); $('source-preview').replaceChildren();
   const kind = tools[current].type === 'image' ? 'img' : tools[current].type === 'videoUpload' ? 'video' : 'audio';
   const preview = document.createElement(kind);
@@ -315,7 +371,7 @@ function renderResult(blob, filename, original, batch) {
   }
   $('next-tool').replaceChildren();
   for(const [key, tool] of Object.entries(tools)) {
-    if(!acceptsFile(tool, resultFile)) continue;
+    if(key === 'audioJoin' || !acceptsFile(tool, resultFile)) continue;
     const option = document.createElement('option'); option.value = key; option.textContent = tool.action;
     $('next-tool').append(option);
   }
@@ -362,14 +418,22 @@ $('tool-form').addEventListener('submit', async event => {
   const tool = tools[current], data = new FormData();
   const batch = $('batch-mode').checked;
   if(current === 'youtube') data.set('url', $('url').value.trim());
+  else if(current === 'audioJoin') {
+    if(mixFiles.length < 2) { status('Adicione pelo menos dois arquivos para juntar.',true); return; }
+    for(const selected of mixFiles) data.append('files',selected);
+  }
   else if(batch) {
     if(!batchFiles.length) { status('Escolha as imagens do lote.', true); return; }
     data.set('operation', batchOperations[current]);
     for(const item of batchFiles) data.append('files', item);
   }
-  else { if(!acceptsFile(tool, file)) { status('Escolha um arquivo para continuar.', true); return; } data.set('file',file); }
+  else { if(!acceptsFile(tool, file)) { status('Escolha um arquivo para continuar.', true); return; } data.set(current === 'audioEffects' ? 'files' : 'file',file); }
   if(current === 'resize' && !$('maxWidth').value && !$('maxHeight').value) {status('Informe a largura ou a altura máxima.', true); return;}
-  for(const [name] of tool.fields) { const control = $(name); if(!control.disabled && control.value !== '' && !['start','end','targetBytes','customTarget','allowResize'].includes(name)) data.set(name, control.type === 'checkbox' ? String(control.checked) : control.value); }
+  for(const [name] of tool.fields) { const control = $(name); if(!control.disabled && control.value !== '' && !['start','end','fadeIn','fadeOut','targetBytes','customTarget','allowResize'].includes(name)) data.set(name, control.type === 'checkbox' ? String(control.checked) : control.value); }
+  if(['audioJoin','audioEffects'].includes(current)) {
+    data.set('fadeInMs',Math.round(Number($('fadeIn').value)*1000));
+    data.set('fadeOutMs',Math.round(Number($('fadeOut').value)*1000));
+  }
   if(current === 'compress' && $('targetBytes').value !== 'manual') {
     const target = $('targetBytes').value;
     data.set('targetBytes', target === 'custom' ? Number($('customTarget').value) * 1000 : target);
@@ -384,7 +448,7 @@ $('tool-form').addEventListener('submit', async event => {
     data.set('startMs',start); data.set('endMs',end);
   }
   const original = current === 'youtube' ? null : file;
-  audioEditor?.pause();
+  audioEditor?.pause(); audioMixer?.pause();
   clearResult(); busy = true; $('controls').disabled = true;
   setToolNavDisabled(true);
   $('submit-label').textContent = 'Processando…'; status('Estamos preparando seu arquivo. Mantenha esta página aberta.');

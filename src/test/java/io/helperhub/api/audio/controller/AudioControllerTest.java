@@ -35,6 +35,18 @@ class AudioControllerTest {
   private AudioService audioService;
 
   @Test
+  void rejectsInvalidEffectsAndUnsupportedMixUploads() throws Exception {
+    var file = new MockMultipartFile("files","tone.wav","audio/wav",new byte[]{1,2,3});
+    mockMvc.perform(multipart("/api/audio/effects").file(file).param("volumePercent","201"))
+        .andExpect(status().isBadRequest());
+    mockMvc.perform(multipart("/api/audio/join")
+            .file(new MockMultipartFile("files","notes.txt","text/plain",new byte[]{1})))
+        .andExpect(status().isBadRequest());
+    mockMvc.perform(multipart("/api/audio/effects").file(file).param("fadeOutMs","-1"))
+        .andExpect(status().isBadRequest());
+  }
+
+  @Test
   void returnsBadRequestWhenIntervalIsInvalid() throws Exception {
     MockMultipartFile file = new MockMultipartFile(
         "file",
