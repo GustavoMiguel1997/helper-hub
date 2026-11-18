@@ -53,8 +53,9 @@ Todas as operações são `POST`. Envie campos como `multipart/form-data`; o dow
 | --- | --- |
 | `/api/image/compress` | `file`; opcionais `jpegQuality=1..100` (75 por padrão), `outputFormat=JPEG/PNG` (JPEG por padrão). Em JPEG, `targetBytes=1024..10000000` ativa a meta por arquivo e substitui a qualidade manual. Com `allowResize=true`, reduz as dimensões se ajustar a qualidade for insuficiente. |
 | `/api/image/batch` | 1 a 5 campos `files` e `operation=COMPRESS/CONVERT/RESIZE`, com as opções da operação correspondente. Retorna um ZIP. |
-| `/api/image/resize` | `file`, `maxWidth` e/ou `maxHeight`; opcionais `outputFormat=AUTO/PNG/JPEG`, `jpegQuality=1..100` |
-| `/api/image/convert` | `file`, `outputFormat=PNG/JPEG`; opcional `jpegQuality` |
+| `/api/image/edit` | `file`; opcionais `x`, `y`, `width`, `height` (recorte em pixels, os quatro juntos), `rotation=0/90/180/270` (giro horário), `flipHorizontal`, `flipVertical`, `outputFormat=PNG/JPEG/WEBP` (PNG por padrão) e `jpegQuality=1..100`. Aplica recorte, giro e espelhamento, nessa ordem. |
+| `/api/image/resize` | `file`, `maxWidth` e/ou `maxHeight`; opcionais `outputFormat=AUTO/PNG/JPEG/WEBP`, `jpegQuality=1..100` |
+| `/api/image/convert` | `file`, `outputFormat=PNG/JPEG/WEBP`; opcional `jpegQuality` |
 | `/api/image/remove-background` | `file` (JPG, PNG ou WebP); retorna PNG |
 | `/api/audio/extract` | `file` de vídeo com áudio, `targetFormat=MP3/WAV/AAC/OGG/FLAC/OPUS`. Extrai a primeira faixa de áudio. |
 | `/api/audio/cut` | `file`, `startMs`, `endMs` (milissegundos) |
@@ -118,6 +119,12 @@ Referências: [yt-dlp](https://github.com/yt-dlp/yt-dlp), [TwelveMonkeys ImageIO
 
 ## Fluxo entre ferramentas
 
+O menu agrupa as ferramentas em acordeões de Imagem, Áudio e Vídeo. A categoria da ferramenta selecionada abre automaticamente. No celular, o seletor de ferramentas se recolhe após a escolha.
+
+**Recortar imagem** oferece seleção por arraste, campos em pixels e proporções livre, 1:1, 16:9, 9:16 e 4:3. Ajustar os campos manualmente volta à proporção livre. **Girar e espelhar** mostra uma prévia dos giros de 90°, 180° e 270° e do espelhamento horizontal/vertical. As fotos com orientação EXIF são normalizadas antes do processamento para acompanhar a prévia do navegador.
+
+Conversão e redimensionamento também aceitam saída WEBP, inclusive em lote. O campo `jpegQuality` ajusta a qualidade de JPEG e WebP. WebP preserva transparência e usa FFmpeg/libwebp, com timeout de 60 segundos por codificação ou decodificação.
+
 A interface mantém o último arquivo de imagem e de mídia em memória durante a sessão da página. Ao trocar de ferramenta, o arquivo é reaproveitado se for compatível; não é enviado automaticamente. Cada resultado oferece **Continuar com este arquivo**, que o transforma na entrada da próxima operação sem baixar e selecionar novamente. Recarregar a página descarta esses arquivos da interface.
 
 Resultados acima de 50 MB continuam disponíveis para download, mas não podem ser reutilizados em endpoints de upload. Imagens exibem comparação lado a lado, dimensões, tamanhos e redução (ou aumento) real. JPEG substitui transparência por branco.
@@ -139,3 +146,11 @@ Validação em 31/10/2026: suíte Gradle aprovada; seleção por arraste e tecla
 ### Publicar na Vercel
 
 Use o preset **Container** para rodar o Dockerfile na Vercel. O [guia de deploy](DEPLOY-VERCEL.md) mostra como configurar o projeto e testar um Preview. Para o primeiro teste, use arquivos pequenos. A Vercel limita o corpo de uploads a 4,5 MB.
+
+### Marca e favicon
+
+O símbolo usa um h creme sobre verde-floresta com detalhe em lima. O logo de 512 px está em `src/main/resources/static/logo.png`. O site usa o mesmo símbolo no cabeçalho, rodapé, `favicon.ico` (16, 32 e 48 px), `favicon-32.png` e `apple-touch-icon.png` (180 px).
+
+A marca foi criada com o ImageGen integrado. Prompt final usado:
+
+> Use case: logo-brand. Final app icon for Helper Hub, a useful web toolkit. Square opaque canvas completely filled edge-to-edge with perfectly flat forest green #254d3b. In the center, one bold, clean geometric lowercase h in warm white #f8f8f2, with thick rounded ends and one small rounded-square lime #c5d88b accent floating above its right shoulder. Minimal legible geometric design suitable for 16px favicon. Symbol occupies 72 percent of canvas. Crisp solid colors. Only these three solid colors. No words, no border, no texture, no gradients, no shadows, no mockup, no transparency.

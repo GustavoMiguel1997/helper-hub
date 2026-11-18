@@ -21,7 +21,7 @@ public class ImageWebConfiguration {
           return ImageResizeOutputFormat.valueOf(source.trim().toUpperCase());
         } catch (IllegalArgumentException exception) {
           throw new IllegalArgumentException(
-              "outputFormat deve ser um dos valores: AUTO, JPEG, PNG.");
+              "outputFormat deve ser um dos valores: AUTO, JPEG, PNG, WEBP.");
         }
       }
     };

@@ -3,7 +3,8 @@ package io.helperhub.api.image.domain;
 public enum ImageResizeOutputFormat {
   AUTO(null, null, null),
   JPEG("jpg", "image/jpeg", "jpg"),
-  PNG("png", "image/png", "png");
+  PNG("png", "image/png", "png"),
+  WEBP("webp", "image/webp", "webp");
 
   private final String fileExtension;
   private final String mediaType;

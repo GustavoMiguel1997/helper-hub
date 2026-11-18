@@ -2,6 +2,7 @@ package io.helperhub.api.image.controller;
 
 import io.helperhub.api.common.support.DeletingFileStreamResourceFactory;
 import io.helperhub.api.image.dto.ImageConvertRequest;
+import io.helperhub.api.image.dto.ImageEditRequest;
 import io.helperhub.api.image.dto.ImageCompressRequest;
 import io.helperhub.api.image.dto.ImageFileOutputDto;
 import io.helperhub.api.image.dto.ImageRemoveBackgroundRequest;
@@ -64,7 +65,7 @@ public class ImageController {
       summary = "Redimensionar imagem",
       description = "Envia uma imagem (JPG, PNG ou WebP). Use maxWidth e/ou maxHeight; a proporção é mantida e imagens "
           + "menores que o alvo não são ampliadas. Formato de saída: outputFormat AUTO (segue o tipo de entrada; WebP vira PNG), "
-          + "JPEG ou PNG. jpegQuality (1–100) só vale para JPEG."
+          + "JPEG, PNG ou WEBP. jpegQuality (1–100) vale para JPEG e WebP."
   )
   @ApiResponse(responseCode = "200", description = "Imagem redimensionada")
   @ApiResponse(responseCode = "400", description = "Dados inválidos")
@@ -78,8 +79,8 @@ public class ImageController {
 
   @Operation(
       summary = "Converter formato da imagem",
-      description = "Envia uma imagem (JPG, PNG ou WebP) e converte para JPEG ou PNG sem redimensionar. "
-          + "jpegQuality (1–100) só vale para JPEG."
+      description = "Envia uma imagem (JPG, PNG ou WebP) e converte para JPEG, PNG ou WEBP sem redimensionar. "
+          + "jpegQuality (1–100) vale para JPEG e WebP."
   )
   @ApiResponse(responseCode = "200", description = "Imagem convertida")
   @ApiResponse(responseCode = "400", description = "Dados inválidos")
@@ -95,6 +96,13 @@ public class ImageController {
   @PostMapping(value = "/compress", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<Resource> compress(@Valid @ModelAttribute ImageCompressRequest request) {
     return attachmentResponse(imageResizeService.compress(request));
+  }
+
+  @Operation(summary = "Recortar, girar e espelhar imagem",
+      description = "Recorte em pixels da imagem original, seguido de giro horário e espelhamento.")
+  @PostMapping(value = "/edit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<Resource> edit(@Valid @ModelAttribute ImageEditRequest request) {
+    return attachmentResponse(imageResizeService.edit(request));
   }
 
   static ResponseEntity<Resource> attachmentResponse(ImageFileOutputDto result) {

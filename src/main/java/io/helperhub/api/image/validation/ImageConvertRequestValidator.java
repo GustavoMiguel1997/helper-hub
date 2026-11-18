@@ -29,7 +29,7 @@ public class ImageConvertRequestValidator
       return false;
     }
     if (Objects.isNull(request.getOutputFormat()) || request.getOutputFormat().isAuto()) {
-      context.buildConstraintViolationWithTemplate("outputFormat deve ser JPEG ou PNG.")
+      context.buildConstraintViolationWithTemplate("outputFormat deve ser JPEG, PNG ou WEBP.")
           .addPropertyNode("outputFormat")
           .addConstraintViolation();
       return false;

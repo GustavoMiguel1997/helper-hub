@@ -1,8 +1,11 @@
 const tools = {
+  crop: {category:'IMAGEM', title:'Enquadre o que importa.', description:'Arraste sobre a imagem para selecionar um recorte. Ajuste a posição pelos campos em pixels.', endpoint:'/api/image/edit', action:'Recortar imagem', type:'image', fields:[['x','Posição horizontal (px)','number','0'],['y','Posição vertical (px)','number','0'],['width','Largura do recorte (px)','number',''],['height','Altura do recorte (px)','number',''],['outputFormat','Formato de saída','select','PNG,JPEG,WEBP']]},
+  rotate: {category:'IMAGEM', title:'Encontre o ângulo certo.', description:'Gire ou espelhe sua imagem e confira a prévia antes de baixar.', endpoint:'/api/image/edit', action:'Girar e espelhar', type:'image', fields:[['rotation','Giro horário','select','0,90,180,270'],['flipHorizontal','Espelhar horizontalmente','checkbox','true'],['flipVertical','Espelhar verticalmente','checkbox','true'],['outputFormat','Formato de saída','select','PNG,JPEG,WEBP']]},
+
   compress: {category:'IMAGEM', title:'Menos peso. Mais possibilidades.', description:'Escolha um tamanho máximo ou ajuste a qualidade do JPEG.', endpoint:'/api/image/compress', action:'Comprimir imagem', type:'image', fields:[['targetBytes','Tamanho máximo por imagem','select','manual,500000,1000000,2000000,custom'],['customTarget','Tamanho máximo (KB)','number',''],['allowResize','Permitir reduzir as dimensões para atingir o tamanho-alvo','checkbox','true'],['jpegQuality','Qualidade JPEG (1–100)','range','75']], note:'Saída em JPEG. Áreas transparentes recebem fundo branco.'},
   extract: {category:'VÍDEO', title:'Leve só o som com você.', description:'Envie um vídeo e extraia sua primeira faixa de áudio no formato que preferir.', endpoint:'/api/audio/extract', action:'Extrair áudio', type:'videoUpload', fields:[['targetFormat','Formato de saída','select','MP3,WAV,AAC,OGG,FLAC,OPUS']], note:'O vídeo precisa conter uma faixa de áudio. Upload de até 50 MB.'},
-  resize: {category:'IMAGEM', title:'O tamanho certo, sem esforço.', description:'Ajuste as dimensões mantendo a proporção. Imagens menores não são ampliadas.', endpoint:'/api/image/resize', action:'Redimensionar imagem', type:'image', fields:[['maxWidth','Largura máxima (px)','number','1200'],['maxHeight','Altura máxima (px)','number',''],['outputFormat','Formato de saída','select','AUTO,PNG,JPEG'],['jpegQuality','Qualidade JPEG (1–100)','number','85']]},
-  imageConvert: {category:'IMAGEM', title:'Um novo formato. A mesma ideia.', description:'Converta sua imagem para PNG ou JPEG mantendo as dimensões originais.', endpoint:'/api/image/convert', action:'Converter imagem', type:'image', fields:[['outputFormat','Formato de saída','select','PNG,JPEG'],['jpegQuality','Qualidade JPEG (1–100)','number','85']]},
+  resize: {category:'IMAGEM', title:'O tamanho certo, sem esforço.', description:'Ajuste as dimensões mantendo a proporção. Imagens menores não são ampliadas.', endpoint:'/api/image/resize', action:'Redimensionar imagem', type:'image', fields:[['maxWidth','Largura máxima (px)','number','1200'],['maxHeight','Altura máxima (px)','number',''],['outputFormat','Formato de saída','select','AUTO,PNG,JPEG,WEBP'],['jpegQuality','Qualidade JPEG / WebP (1–100)','number','85']]},
+  imageConvert: {category:'IMAGEM', title:'Um novo formato. A mesma ideia.', description:'Converta sua imagem para PNG, JPEG ou WebP mantendo as dimensões originais.', endpoint:'/api/image/convert', action:'Converter imagem', type:'image', fields:[['outputFormat','Formato de saída','select','PNG,JPEG,WEBP'],['jpegQuality','Qualidade JPEG / WebP (1–100)','number','85']]},
   removeBg: {category:'IMAGEM', title:'Dê espaço ao que importa.', description:'Remova o fundo e receba um PNG com transparência.', endpoint:'/api/image/remove-background', action:'Remover fundo', type:'image', fields:[], note:'Esta operação envia a imagem ao serviço remove.bg e depende da configuração e dos créditos do servidor.'},
   cut: {category:'ÁUDIO', title:'Só o trecho que você precisa.', description:'Arraste os seletores na faixa, ouça o trecho e baixe seu corte. O corte preserva o codec original e pode ter pequena variação de precisão.', endpoint:'/api/audio/cut', action:'Cortar e baixar', type:'audio', fields:[['start','Início (segundos)','number','0'],['end','Fim (segundos)','number','10']]},
   audioConvert: {category:'ÁUDIO', title:'Seu som, em outro formato.', description:'Converta a faixa de áudio principal para o formato que combina com seu próximo passo.', endpoint:'/api/audio/convert', action:'Converter áudio', type:'audio', fields:[['targetFormat','Formato de saída','select','MP3,WAV,AAC,OGG,FLAC,OPUS']]},
@@ -18,6 +21,7 @@ const targetLabels = {manual:'Ajustar qualidade', 500000:'500 KB', 1000000:'1 MB
 const sourceFiles = {image:null, media:null};
 let batchFiles = [];
 let audioEditor = null;
+let imageEditor = null;
 let current = 'resize', file = null, sourceUrl = null, resultUrl = null, comparisonUrl = null, resultFile = null, busy = false;
 function extensions(tool) { return tool.type === 'image' ? imageExtensions : tool.type === 'videoUpload' ? videoExtensions : audioExtensions; }
 function acceptsFile(tool, candidate) {
@@ -40,6 +44,8 @@ function status(message = '', error = false) { $('status').textContent = message
 function selectTool(key) {
   if (busy) return;
   audioEditor?.destroy(); audioEditor = null;
+  imageEditor?.destroy(); imageEditor = null;
+  clearResult();
   current = key; file = null; $('file').value = ''; status();
   batchFiles = [];
   $('batch-mode').checked = false;
@@ -48,6 +54,9 @@ function selectTool(key) {
   if(sourceUrl) URL.revokeObjectURL(sourceUrl); sourceUrl = null;
   $('source-preview').replaceChildren(); $('source-preview').hidden = true;
   const tool = tools[key];
+  document.querySelectorAll('.tool-category').forEach(group => { group.open = group.dataset.category === tool.category; });
+  $('tool-menu-label').textContent = 'Ferramentas · ' + tool.action;
+  if(window.matchMedia('(max-width:640px)').matches) $('tool-menu').open = false;
   document.querySelectorAll('[data-tool]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.tool === key)));
   $('tool-category').textContent = `FERRAMENTA DE ${tool.category}`;
   $('tool-title').textContent = tool.title; $('tool-description').textContent = tool.description;
@@ -68,6 +77,11 @@ function selectTool(key) {
     const control = document.createElement(type === 'select' ? 'select' : 'input'); control.id = name; control.name = name;
     if(type === 'select') for(const item of value.split(',')) { const option = document.createElement('option'); option.value = item; option.textContent = name === 'targetBytes' ? targetLabels[item] : item === 'AUTO' ? 'Automático' : item === 'AAC' ? 'AAC / M4A' : item; control.append(option); }
     else { control.type = type; control.value = value; control.min = name === 'start' ? '0' : '1'; control.step = ['start','end'].includes(name) ? '0.001' : '1'; if(['start','end'].includes(name)) {control.min='0'; control.required = true;} else control.max = name === 'jpegQuality' ? '100' : '8192'; }
+    if(['x','y','width','height'].includes(name)) {
+      control.min = ['x','y'].includes(name) ? '0' : '1';
+      control.max = '25000000';
+      control.required = true;
+    }
     if(type === 'checkbox') {
       caption.classList.add('check-option');
       caption.prepend(control);
@@ -159,6 +173,7 @@ function setUpload(files) {
 }
 function renderSource(selected) {
   audioEditor?.destroy(); audioEditor = null;
+  imageEditor?.destroy(); imageEditor = null;
   file = selected; $('file').required = false;
   $('file-title').textContent = selected.name;
   $('file-hint').textContent = `${formatSize(selected.size)} · clique para trocar`;
@@ -169,6 +184,9 @@ function renderSource(selected) {
   preview.src = sourceUrl;
   if(kind === 'img') preview.alt = 'Prévia do arquivo selecionado'; else { preview.controls = true; preview.preload = 'metadata'; }
   $('source-preview').append(preview); $('source-preview').hidden = false;
+  if(['crop','rotate'].includes(current)) {
+    imageEditor = createImageEditor($('source-preview'), preview, current, status);
+  }
   if(current === 'cut') audioEditor = createAudioEditor($('source-preview'), preview, selected, $('start'), $('end'));
 }
 function setFile(selected) {
@@ -251,11 +269,14 @@ $('tool-form').addEventListener('submit', async event => {
   }
   else { if(!acceptsFile(tool, file)) { status('Escolha um arquivo para continuar.', true); return; } data.set('file',file); }
   if(current === 'resize' && !$('maxWidth').value && !$('maxHeight').value) {status('Informe a largura ou a altura máxima.', true); return;}
-  for(const [name] of tool.fields) { const control = $(name); if(!control.disabled && control.value !== '' && !['start','end','targetBytes','customTarget','allowResize'].includes(name)) data.set(name, control.value); }
+  for(const [name] of tool.fields) { const control = $(name); if(!control.disabled && control.value !== '' && !['start','end','targetBytes','customTarget','allowResize'].includes(name)) data.set(name, control.type === 'checkbox' ? String(control.checked) : control.value); }
   if(current === 'compress' && $('targetBytes').value !== 'manual') {
     const target = $('targetBytes').value;
     data.set('targetBytes', target === 'custom' ? Number($('customTarget').value) * 1000 : target);
     data.set('allowResize', $('allowResize').checked);
+  }
+  if(['crop','rotate'].includes(current) && !imageEditor?.ready()) {
+    status('Aguarde a prévia da imagem ficar pronta.', true); return;
   }
   if(current === 'cut') {
     const start = Math.round(Number($('start').value)*1000), end = Math.round(Number($('end').value)*1000);
@@ -289,3 +310,7 @@ $('tool-form').addEventListener('submit', async event => {
   finally { busy = false; $('controls').disabled = false; document.querySelectorAll('[data-tool]').forEach(button => button.disabled = false); $('submit-label').textContent = batch ? 'Processar e gerar ZIP' : tool.action; }
 });
 selectTool('resize');
+
+const mobileMenu = window.matchMedia('(max-width:640px)');
+$('tool-menu').open = !mobileMenu.matches;
+mobileMenu.addEventListener('change', event => { $('tool-menu').open = !event.matches; });
