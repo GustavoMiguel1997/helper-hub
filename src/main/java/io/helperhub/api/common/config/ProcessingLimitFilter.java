@@ -1,5 +1,7 @@
 package io.helperhub.api.common.config;
 
+import io.helperhub.api.common.support.RequestPaths;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -16,6 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Order(Ordered.HIGHEST_PRECEDENCE + 30)
 public class ProcessingLimitFilter extends OncePerRequestFilter {
   private final Semaphore permits;
+  private final Semaphore videoCompressionPermits = new Semaphore(1);
 
   public ProcessingLimitFilter(@Value("${helperhub.processing.max-concurrent:4}") int maximum) {
     permits = new Semaphore(Math.max(1, maximum));
@@ -23,7 +26,7 @@ public class ProcessingLimitFilter extends OncePerRequestFilter {
 
   @Override
   protected boolean shouldNotFilter(HttpServletRequest request) {
-    String path = request.getRequestURI().substring(request.getContextPath().length());
+    String path = RequestPaths.applicationPath(request);
     return !request.getMethod().equals("POST") || !(path.startsWith("/api/audio/")
         || path.startsWith("/api/image/") || path.startsWith("/api/video/"));
   }
@@ -32,13 +35,31 @@ public class ProcessingLimitFilter extends OncePerRequestFilter {
   protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
       FilterChain chain) throws ServletException, IOException {
     if (!permits.tryAcquire()) {
-      response.setStatus(503);
-      response.setHeader("Retry-After", "5");
-      response.setContentType("application/json");
-      response.setCharacterEncoding("UTF-8");
-      response.getWriter().write("{\"error\":\"PROCESSING_BUSY\",\"message\":\"Servidor ocupado. Tente novamente em alguns segundos.\"}");
+      rejectBusy(response);
       return;
     }
-    try { chain.doFilter(request, response); } finally { permits.release(); }
+    boolean compressionAcquired = false;
+    try {
+      String path = RequestPaths.applicationPath(request);
+      if (path.equals("/api/video/compress")) {
+        compressionAcquired = videoCompressionPermits.tryAcquire();
+        if (!compressionAcquired) {
+          rejectBusy(response);
+          return;
+        }
+      }
+      chain.doFilter(request, response);
+    } finally {
+      if (compressionAcquired) videoCompressionPermits.release();
+      permits.release();
+    }
+  }
+
+  private static void rejectBusy(HttpServletResponse response) throws IOException {
+    response.setStatus(503);
+    response.setHeader("Retry-After", "5");
+    response.setContentType("application/json");
+    response.setCharacterEncoding("UTF-8");
+    response.getWriter().write("{\"error\":\"PROCESSING_BUSY\",\"message\":\"Servidor ocupado. Tente novamente em alguns segundos.\"}");
   }
 }

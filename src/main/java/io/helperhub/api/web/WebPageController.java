@@ -40,6 +40,7 @@ public class WebPageController {
         "/juntar-audios",
         "/ajustar-volume-audio",
         "/extrair-audio-video",
+        "/comprimir-video",
         "/baixar-video-youtube"
       },
       produces = "text/html;charset=UTF-8")

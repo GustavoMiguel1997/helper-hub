@@ -23,6 +23,15 @@ public class VideoUsageProperties {
   private long maxDownloadDurationSeconds = 900;
   private long maxDownloadBytes = 250L * 1024 * 1024;
   private long maxVideoDurationSeconds = 1800;
+  private long maxCompressDurationSeconds = 300;
+  private long maxCompressProcessingSeconds = 180;
+  private long maxCompressOutputBytes = 50L * 1024 * 1024;
+  public long getMaxCompressDurationSeconds() { return maxCompressDurationSeconds; }
+  public void setMaxCompressDurationSeconds(long value) { maxCompressDurationSeconds = Math.max(1,value); }
+  public long getMaxCompressProcessingSeconds() { return maxCompressProcessingSeconds; }
+  public void setMaxCompressProcessingSeconds(long value) { maxCompressProcessingSeconds = Math.max(1,value); }
+  public long getMaxCompressOutputBytes() { return maxCompressOutputBytes; }
+  public void setMaxCompressOutputBytes(long value) { maxCompressOutputBytes = Math.max(1,value); }
 
   public long getMaxDownloadBytes() { return maxDownloadBytes; }
   public void setMaxDownloadBytes(long value) { maxDownloadBytes = Math.max(1, value); }

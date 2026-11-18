@@ -131,7 +131,7 @@ public class ToolPageRenderer {
 
   private static String buildExploreContent() {
     StringBuilder html = new StringBuilder();
-    var featuredKeys = List.of("compress", "crop", "cut", "audioJoin", "extract", "youtube");
+    var featuredKeys = List.of("compress", "crop", "cut", "audioJoin", "extract", "videoCompress");
     for (String category : CATEGORY_ORDER) {
       html.append("<section class=\"explore-category\"><h3>")
           .append(escape(CATEGORY_TITLES.get(category))).append("</h3><div class=\"explore-cards\">");

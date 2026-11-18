@@ -5,6 +5,7 @@ const audioMixFields = [
   ['targetFormat','Formato de saída','select','MP3,WAV,AAC,OGG,FLAC,OPUS']
 ];
 const tools = {
+  videoCompress: {category:'VÍDEO', title:'Seu vídeo, mais leve.', description:'Envie um vídeo e escolha a resolução e a qualidade do MP4.', endpoint:'/api/video/compress', action:'Comprimir vídeo', type:'videoUpload', fields:[['resolution','Resolução máxima','select','720,480,1080'],['quality','Qualidade','select','BALANCED,HIGH,SMALL']], note:'Até 50 MB e 5 minutos. Saída MP4 (H.264/AAC), a 30 fps. O resultado pode ficar maior que o original.'},
   audioJoin: {category:'ÁUDIO', title:'Seus áudios, em uma sequência.', description:'Adicione arquivos, escolha a ordem e ouça a sequência antes de gerar o resultado.', endpoint:'/api/audio/join', action:'Juntar áudios', type:'audio', fields:audioMixFields, note:'De 2 a 5 arquivos, até 50 MB no total e 30 minutos de áudio. Volume e fades valem para a sequência completa.'},
   audioEffects: {category:'ÁUDIO', title:'O volume e a entrada certos.', description:'Ajuste o volume e suavize o início e o fim. Ouça os ajustes antes de preparar o arquivo.', endpoint:'/api/audio/effects', action:'Aplicar volume e fades', type:'audio', fields:audioMixFields, note:'Até 50 MB e 30 minutos. Cada fade pode ter até 30 segundos e deve caber na duração do áudio. Volumes altos podem distorcer.'},
 
@@ -27,6 +28,7 @@ const audioExtensions = '.mp3,.m4a,.aac,.wav,.flac,.ogg,.opus,.wma,.aiff,.aif,.c
 const uploadLimit = 50 * 1024 * 1024;
 const batchOperations = {compress:'COMPRESS', resize:'RESIZE', imageConvert:'CONVERT'};
 const targetLabels = {manual:'Ajustar qualidade', 500000:'500 KB', 1000000:'1 MB', 2000000:'2 MB', custom:'Personalizado'};
+const optionLabels = {AUTO:'Automático', AAC:'AAC / M4A', HIGH:'Mais qualidade', BALANCED:'Equilibrado', SMALL:'Arquivo menor', 480:'480p', 720:'720p', 1080:'1080p'};
 const sourceFiles = {image:null, media:null};
 let batchFiles = [];
 let audioEditor = null;
@@ -34,6 +36,7 @@ let audioMixer = null;
 let mixFiles = [];
 let imageEditor = null;
 let current = 'resize', file = null, sourceUrl = null, resultUrl = null, comparisonUrl = null, resultFile = null, busy = false;
+let activePagePath = null;
 function extensions(tool) { return tool.type === 'image' ? imageExtensions : tool.type === 'videoUpload' ? videoExtensions : audioExtensions; }
 function acceptsFile(tool, candidate) {
   return tool.type !== 'video' && candidate && candidate.size > 0 && candidate.size <= uploadLimit
@@ -90,6 +93,7 @@ function setToolNavDisabled(disabled) {
 }
 function navigateToPage(page, pushHistory = true) {
   if(busy || !page) return;
+  activePagePath = page.path;
   if(pushHistory && window.location.pathname !== page.path) {
     window.history.pushState({tool:page.toolKey}, '', page.path);
   }
@@ -175,7 +179,7 @@ function selectTool(key) {
     const wrapper = document.createElement('div'), caption = document.createElement('label');
     caption.htmlFor = name; caption.textContent = label;
     const control = document.createElement(type === 'select' ? 'select' : 'input'); control.id = name; control.name = name;
-    if(type === 'select') for(const item of value.split(',')) { const option = document.createElement('option'); option.value = item; option.textContent = name === 'targetBytes' ? targetLabels[item] : item === 'AUTO' ? 'Automático' : item === 'AAC' ? 'AAC / M4A' : item; control.append(option); }
+    if(type === 'select') for(const item of value.split(',')) { const option = document.createElement('option'); option.value = item; option.textContent = name === 'targetBytes' ? targetLabels[item] : optionLabels[item] || item; control.append(option); }
     else { control.type = type; control.value = value; control.min = name === 'start' ? '0' : '1'; control.step = ['start','end'].includes(name) ? '0.001' : '1'; if(['start','end'].includes(name)) {control.min='0'; control.required = true;} else control.max = name === 'jpegQuality' ? '100' : '8192'; }
     if(['fadeIn','fadeOut'].includes(name)) {
       control.min = '0'; control.max = '30'; control.step = '0.1'; control.required = true;
@@ -369,6 +373,14 @@ function renderResult(blob, filename, original, batch) {
       previewArea.append(preview);
     } catch { /* Download remains available if a media preview is unsupported. */ }
   }
+  if(current === 'videoCompress' && original) {
+    const difference = original.size - blob.size;
+    const percentage = (Math.abs(difference) / original.size * 100).toFixed(1);
+    $('comparison-summary').textContent = `Antes: ${formatSize(original.size)} · Depois: ${formatSize(blob.size)} · ` + (difference > 0
+      ? `${percentage}% menor`
+      : difference < 0 ? `${percentage}% maior. Experimente uma resolução menor ou a opção Arquivo menor.` : 'Mesmo tamanho do original.');
+    $('comparison-summary').hidden = false;
+  }
   $('next-tool').replaceChildren();
   for(const [key, tool] of Object.entries(tools)) {
     if(key === 'audioJoin' || !acceptsFile(tool, resultFile)) continue;
@@ -404,6 +416,7 @@ for(const region of ['seo-guide','breadcrumb']) $(region)?.addEventListener('cli
   document.querySelector('.workspace')?.scrollIntoView({behavior:'smooth', block:'start'});
 });
 window.addEventListener('popstate', () => {
+  if(window.location.pathname === activePagePath) return;
   const page = pageByPath[window.location.pathname] || pageByPath['/'];
   if (!page) return;
   navigateToPage(page, false);

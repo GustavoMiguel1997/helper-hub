@@ -88,10 +88,12 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(VideoProcessingException.class)
   public ResponseEntity<?> handleVideoProcessing(VideoProcessingException exception, HttpServletRequest request) {
+    int status = "VIDEO_TOOLS_UNAVAILABLE".equals(exception.getError())
+        ? HTTP_STATUS_SERVICE_UNAVAILABLE : HTTP_STATUS_UNPROCESSABLE_ENTITY;
     if (!acceptsJson(request)) {
-      return ResponseEntity.status(HTTP_STATUS_UNPROCESSABLE_ENTITY).build();
+      return ResponseEntity.status(status).build();
     }
-    return ResponseEntity.status(HTTP_STATUS_UNPROCESSABLE_ENTITY)
+    return ResponseEntity.status(status)
         .body(ApiError.of(exception.getError(), exception.getMessage()));
   }
 

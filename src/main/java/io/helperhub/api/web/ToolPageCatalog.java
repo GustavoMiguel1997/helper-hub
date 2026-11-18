@@ -361,6 +361,26 @@ public final class ToolPageCatalog {
           ), false)
   );
 
+  private static final List<ToolPageDefinition> VIDEO_TOOLS = List.of(
+      new ToolPageDefinition(
+          "/comprimir-video", "videoCompress", "VÍDEO", "Comprimir vídeo",
+          "Comprimir vídeo online para MP4 — HelperHub",
+          "Reduza o tamanho de vídeos com saída MP4, resolução de até 480p, 720p ou 1080p e comparação do tamanho antes de baixar.",
+          "FERRAMENTA DE VÍDEO · COMPRESSÃO", "Comprimir vídeo online",
+          "Escolha a resolução e a qualidade para preparar um MP4 mais leve. Confira a redução real e assista ao resultado antes de baixar.",
+          "Como reduzir o tamanho de um vídeo",
+          List.of(
+              "Envie MP4, WebM, MKV, MOV, AVI, WMV, MPEG, MPG ou 3GP de até 50 MB e 5 minutos. A entrada pode ter até 60 fps, 4096 pixels por lado e 8.294.400 pixels no total.",
+              "Escolha 480p, 720p ou 1080p como resolução máxima e uma das três opções de qualidade. A proporção é preservada, inclusive em vídeos verticais, e vídeos menores não são ampliados.",
+              "A saída é MP4 com vídeo H.264 a 30 fps e áudio AAC, quando presente. O resultado pode ficar maior que o original se ele já estiver bem comprimido. A comparação mostra os tamanhos reais; a saída está limitada a 50 MB."
+          ),
+          List.of(
+              new FaqItem("A compressão mantém a qualidade original?", "Há perda de qualidade ao recodificar. Mais qualidade preserva mais detalhes; Arquivo menor prioriza a redução de tamanho."),
+              new FaqItem("Posso comprimir um vídeo sem áudio?", "Sim. Vídeos sem faixa de áudio continuam sem áudio na saída."),
+              new FaqItem("Posso escolher um tamanho exato em MB?", "Esta ferramenta ajusta resolução e qualidade, sem prometer um tamanho exato. Compare o resultado e experimente outra opção se necessário.")
+          ), false)
+  );
+
   private static final List<ToolPageDefinition> PRESETS = List.of(
       new ToolPageDefinition(
           "/comprimir-imagem-500kb", "compress", "IMAGEM", "Comprimir imagem para 500 KB",
@@ -419,7 +439,7 @@ public final class ToolPageCatalog {
   }
 
   public static List<ToolPageDefinition> tools() {
-    return java.util.stream.Stream.concat(TOOLS.stream(), AUDIO_TOOLS.stream()).toList();
+    return java.util.stream.Stream.of(TOOLS, AUDIO_TOOLS, VIDEO_TOOLS).flatMap(List::stream).toList();
   }
 
   public static List<ToolPageDefinition> pages() {

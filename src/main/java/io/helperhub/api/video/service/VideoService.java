@@ -149,7 +149,7 @@ public class VideoService {
     }
   }
 
-  private static void terminate(Process process) {
+  static void terminate(Process process) {
     var children = process.descendants().toList();
     children.forEach(ProcessHandle::destroyForcibly);
     if (process.isAlive()) process.destroyForcibly();
@@ -191,7 +191,7 @@ public class VideoService {
     }
   }
 
-  private static void deleteTree(Path root) {
+  static void deleteTree(Path root) {
     if (root == null) return;
     try (var paths = Files.walk(root)) {
       for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) deleteQuietly(path);

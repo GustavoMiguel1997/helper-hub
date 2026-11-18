@@ -12,6 +12,18 @@ import org.springframework.mock.web.*;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 class RateLimitTest {
+  @Test void encodedRoutesAndMatrixParametersShareVideoLimit() throws Exception {
+    var video = new VideoUsageProperties(); video.setMaxRequestsPerMinute(1);
+    var filter = new VideoRateLimitFilter(video);
+    int expected = 200;
+    for (String path : new String[]{"/api/video/compress", "/api/video/%63ompress", "/api/%76ideo/compress", "/api/video/compress;extra=1"}) {
+      var response = new MockHttpServletResponse();
+      filter.doFilter(new MockHttpServletRequest("POST",path),response,new MockFilterChain());
+      assertEquals(expected,response.getStatus());
+      expected = 429;
+    }
+  }
+
   @Test void forwardedHeaderCannotBypassAnyDomainLimit() throws Exception {
     var audio = new AudioUsageProperties(); audio.setMaxRequestsPerMinute(1);
     var image = new ImageUsageProperties(); image.setMaxRequestsPerMinute(1);

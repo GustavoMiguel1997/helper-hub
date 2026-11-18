@@ -16,7 +16,7 @@ RUN python3 -m venv /opt/yt-dlp \
     && /opt/yt-dlp/bin/pip install --no-cache-dir -r /opt/requirements-video.txt \
     && useradd --uid 10001 --create-home helperhub
 ENV PORT=80
-ENV PATH="/opt/yt-dlp/bin:${PATH}" JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=65 -Djava.awt.headless=true"
+ENV PATH="/opt/yt-dlp/bin:${PATH}" JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=35 -Djava.awt.headless=true"
 WORKDIR /app
 COPY --from=build --chown=10001:10001 /workspace/build/libs/*-SNAPSHOT.jar /app/helperhub.jar
 USER 10001:10001

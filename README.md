@@ -88,8 +88,11 @@ As propriedades estão em `src/main/resources/application.properties`. O Spring 
 | `helperhub.video.max-download-duration-seconds` | 900 s de execução |
 | `helperhub.video.max-video-duration-seconds` | 1800 s de duração do vídeo |
 | `helperhub.video.max-download-bytes` | 262.144.000 bytes (250 MiB), incluindo arquivos intermediários durante o download |
+| `helperhub.video.max-compress-duration-seconds` | 300 s de duração do vídeo enviado |
+| `helperhub.video.max-compress-processing-seconds` | 180 s por compressão; cada análise FFprobe tem timeout de 20 s |
+| `helperhub.video.max-compress-output-bytes` | 52.428.800 bytes (50 MiB) de saída |
 
-Upload: 50 MiB por arquivo e 55 MiB por requisição. A interface usa esses limites padrão. Se alterar limites do servidor, ajuste também as mensagens e validações da interface. Vídeos limitados a 1080p e aos codecs disponíveis no formato escolhido; não há transcodificação para forçar formatos ausentes. Áudio usa cópia de codec no corte: a precisão depende do formato.
+Upload: 50 MiB por arquivo e 55 MiB por requisição. A interface usa esses limites padrão. Se alterar limites do servidor, ajuste também as mensagens e validações da interface. Downloads do YouTube são limitados a 1080p e aos codecs disponíveis no formato escolhido; não há transcodificação para forçar formatos ausentes no download. Áudio usa cópia de codec no corte: a precisão depende do formato.
 
 O limite por IP usa o endereço da conexão e janelas fixas de um minuto. `X-Forwarded-For` enviado pelo cliente é ignorado. Atrás de um proxy, todas as conexões podem compartilhar o IP do proxy: configure identificação de clientes apenas no proxy/container confiável, bloqueie acesso direto à aplicação e valide os cabeçalhos antes de mudar `server.forward-headers-strategy`. Os contadores são locais à instância; múltiplas réplicas precisam de limitação no gateway ou armazenamento compartilhado.
 
@@ -136,6 +139,20 @@ Em **Comprimir imagem**, escolha 500 KB, 1 MB, 2 MB ou informe um teto em KB (1 
 Em **Comprimir**, **Redimensionar** e **Converter**, selecione **Processar em lote (ZIP)** para aplicar as mesmas opções a até 5 imagens (50 MiB de entrada e 64 MiB de resultados no total). O processamento é sequencial. O ZIP numera os arquivos para preservar resultados de mesmo nome. Caso uma imagem falhe, a resposta identifica o arquivo com problema e o lote pode ser reenviado após a correção.
 
 Validação do pacote de compressão/extração em 31/10/2026: **49 testes passaram**. No navegador, foram verificados os fluxos imagem → compressão → redimensionamento e vídeo → extração MP3 → corte, além da preservação do arquivo ao trocar de ferramenta e do layout em tela pequena. O contêiner foi reconstruído e atualizado em `http://localhost:8080`.
+
+### Compressão de vídeo
+
+**Comprimir vídeo** (/comprimir-video) aceita um arquivo de até 50 MiB e 5 minutos em MP4, WebM, MKV, MOV, AVI, WMV, MPEG, MPG ou 3GP. O endpoint POST /api/video/compress valida extensão, tipo declarado e conteúdo real com FFprobe. Entradas sem vídeo, corrompidas, playlists, com duração desconhecida ou acima dos limites são rejeitadas. São aceitos até 16 streams, 8 canais de áudio por faixa e 60 fps. A faixa de vídeo selecionada pode ter até 4096 px por lado, 8.294.400 pixels e proporção máxima de 256:1.
+
+As opções 480p, 720p e 1080p limitam o lado curto e o longo a 480×854, 720×1280 e 1080×1920, respeitando a orientação. A saída MP4 usa H.264, 30 fps, pixels yuv420p e a primeira faixa de áudio em AAC estéreo a 96 kbit/s, quando presente. A escala preserva a proporção e não amplia a imagem. As qualidades HIGH, BALANCED e SMALL correspondem a CRF 23, 28 e 32. Arquivos já eficientes podem ficar maiores; a interface mostra o tamanho real antes e depois. Não há promessa de tamanho exato nem de compressão sem perda.
+
+Uma única compressão é admitida por vez por instância, antes da leitura multipart, compartilhando também as quatro vagas globais. O limite de 20 requisições por minuto de vídeo permanece ativo. FFmpeg executa sem shell, com argumentos controlados, um thread de codificação e bitrate de vídeo máximo configurado em 2,5 Mbit/s. Os demuxers são limitados aos contêineres aceitos e os protocolos a arquivos locais, impedindo a leitura de playlists remotas. FFprobe tem saída de até 1 MiB e timeout de 20 segundos. O FFmpeg é encerrado em caso de erro, interrupção, timeout de 180 segundos ou saída acima de 50 MiB. A saída é reanalisada e rejeitada se estiver incompleta.
+
+O tamanho é conferido a cada 100 ms e ao finalizar, sem enviar arquivos acima do teto. Essa verificação pode permitir um excedente temporário entre amostras e não substitui quota de disco do sistema operacional. Entradas e intermediários são removidos em sucesso e falha; a saída é removida ao fechar a resposta. Um encerramento abrupto pode deixar resíduos, como nos demais fluxos. Limites de memória, CPU e armazenamento do contêiner devem acompanhar a configuração de produção, e os binários FFmpeg devem ser atualizados junto à imagem.
+
+As restrições do contêiner e os campos correspondentes no Coolify estão em [ops/container-security.md](ops/container-security.md). O tmpfs de 512 MiB oferece um teto agregado de espaço temporário por instância; o contêiner usa até 2 GiB de memória, 2 CPUs e 256 processos/threads, com filesystem somente leitura e sem privilégios adicionais.
+
+Validação local em 18/11/2026: 86 testes aprovados, incluindo arquivos reais com FFmpeg, entrada inválida, limites de metadados, timeout, teto de saída, encerramento de processos e limpeza de temporários. Upload HTTP real de 51 MiB retornou 413. Requisições simultâneas para a rota normal e sua variante codificada compartilharam a vaga de compressão, retornando 200 e 503. A interface foi conferida em desktop e celular, com comparação de tamanhos e prévia MP4.
 
 ### Junção, volume e fades
 

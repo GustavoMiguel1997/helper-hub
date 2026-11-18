@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import io.helperhub.api.common.exception.ApiError;
 import io.helperhub.api.common.support.ClientRateLimiter;
+import io.helperhub.api.common.support.RequestPaths;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,10 +45,7 @@ public class ImageRateLimitFilter extends OncePerRequestFilter {
     if (!imageUsageProperties.isRateLimitEnabled()) {
       return true;
     }
-    String uri = request.getRequestURI();
-    String contextPath = request.getContextPath();
-    String prefix = contextPath.isEmpty() ? "" : contextPath;
-    return !uri.startsWith(prefix + "/api/image/");
+    return !RequestPaths.applicationPath(request).startsWith("/api/image/");
   }
 
   @Override

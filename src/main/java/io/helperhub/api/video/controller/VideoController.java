@@ -49,7 +49,7 @@ public class VideoController {
     return attachmentResponse(result);
   }
 
-  private static ResponseEntity<Resource> attachmentResponse(VideoFileOutputDto result) {
+  static ResponseEntity<Resource> attachmentResponse(VideoFileOutputDto result) {
     Path path = result.tempOutputFile();
     try {
       long length = Files.size(path);
@@ -63,6 +63,8 @@ public class VideoController {
           .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
           .body(resource);
     } catch (IOException exception) {
+      try { Files.deleteIfExists(path); }
+      catch (IOException cleanupFailure) { exception.addSuppressed(cleanupFailure); }
       throw new UncheckedIOException("Não foi possível enviar o arquivo.", exception);
     }
   }
